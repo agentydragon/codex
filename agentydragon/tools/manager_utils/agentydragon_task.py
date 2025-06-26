@@ -30,7 +30,13 @@ import shutil
 sys.path.insert(0, str(repo_root() / "agentydragon" / "tools"))
 from launch_commit_agent import main as commit_cmd
 from create_task_worktree import main as create_task_worktree_cmd
-
+# Shared helper to invoke Codex exec with a prompt in a worktree
+def _run_codex_exec(prompt: str, worktree: Path) -> None:
+    """Run a non-interactive Codex session (exec) with the given prompt in worktree."""
+    cmd = ["codex", "--cd", str(worktree), "--full-auto", "exec"]
+    click.echo(f"Running Codex exec: {' '.join(cmd)}")
+    # Pass the prompt as CLI argument rather than via stdin
+    subprocess.check_call(cmd + [prompt])
 # Styling configuration for task statuses
 STATUS_COLORS: dict[str, dict[str, str]] = {
     TaskStatus.NOT_STARTED.value: {"fg": "reset"},
@@ -650,9 +656,8 @@ def workflow():
                 "Please resolve all merge conflicts so that this branch can be cleanly "
                 "merged into 'agentydragon'."
             )
-            subprocess.check_call(
-                ["codex", "exec", "--full-auto"], cwd=task_wt, input=prompt, text=True
-            )
+            # Resolve merge conflicts via Codex exec, passing prompt as CLI argument
+            _run_codex_exec(prompt, task_wt)
 
             # Re-run merge-tree to verify conflicts resolved
             try:
