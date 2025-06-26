@@ -85,7 +85,14 @@ def resolve_slug(input_id: str) -> str:
 )
 @click.argument("task_inputs", nargs=-1, required=True)
 def main(
-    agent, tmux_mode, interactive, shell_mode, skip_presubmit, rebase_mode, task_inputs
+    agent,
+    tmux_mode,
+    hold_shell,
+    interactive,
+    shell_mode,
+    skip_presubmit,
+    rebase_mode,
+    task_inputs,
 ):
     """Create/reuse a task worktree and optionally launch a Dev or Rebase agent or tmux session."""
     # shell mode implies interactive (skip exec within the worktree)
