@@ -1,7 +1,7 @@
 +++
 id = "17"
 title = "Sandbox Pre-commit Permission Error"
-status = "Not started"
+status = "open"
 dependencies = "15" # Rationale: depends on Task 15 for sandbox worktree configuration
 last_updated = "2025-06-25T01:41:34.737190"
 +++

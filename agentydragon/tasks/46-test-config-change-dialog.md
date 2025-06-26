@@ -1,7 +1,7 @@
 +++
 id = "46"
 title = "Test config change confirm dialog upon runtime config updates"
-status = "Not started"
+status = "open"
 freeform_status = ""
 dependencies = ""
 last_updated = "2025-06-26T06:30:00Z"

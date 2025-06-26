@@ -1,7 +1,7 @@
 +++
 id = "34"
 title = "Complete Set Shell Title to Reflect Session Status"
-status = "Not started"
+status = "open"
 dependencies = "08" # Rationale: depends on Task 08 for initial shell title change
 last_updated = "2025-06-25T04:45:29Z"
 +++
@@ -10,7 +10,7 @@ last_updated = "2025-06-25T04:45:29Z"
 
 ## Status
 
-**General Status**: Not started  
+**General Status**: open  
 **Summary**: Follow-up to Task 08; implementation missing for core title persistence and ANSI updates.
 
 ## Goal

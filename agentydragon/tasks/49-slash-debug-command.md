@@ -1,7 +1,7 @@
 +++
 id = "49"
 title = "Slash-command for debugging: show logs, session ID, and API request/response paths"
-status = "Not started"
+status = "open"
 freeform_status = ""
 dependencies = ""
 last_updated = "2025-06-26T06:30:00Z"

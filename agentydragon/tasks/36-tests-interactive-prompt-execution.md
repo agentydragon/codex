@@ -1,7 +1,7 @@
 +++
 id = "36"
 title = "Add Tests for Interactive Prompting While Executing"
-status = "Not started"
+status = "open"
 dependencies = "06,13" # Rationale: depends on Tasks 06 and 13 for external editor and interactive prompt support
 last_updated = "2025-06-25T11:05:55Z"
 +++
@@ -10,7 +10,7 @@ last_updated = "2025-06-25T11:05:55Z"
 
 ## Status
 
-**General Status**: Done  
+**General Status**: done  
 **Summary**: Follow-up to Task 13; add unit tests for interactive prompt overlay during execution.
 
 ## Goal

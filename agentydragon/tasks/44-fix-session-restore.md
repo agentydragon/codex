@@ -1,7 +1,7 @@
 +++
 id = "44"
 title = "Fix session restore to correctly restore session history"
-status = "Not started"
+status = "open"
 freeform_status = ""
 dependencies = ""
 last_updated = "2025-06-26T06:30:00Z"

@@ -1,7 +1,7 @@
 +++
 id = "32"
 title = "Embedded Neovim Prompt Editor"
-status = "Not started"
+status = "open"
 dependencies = "06" # Rationale: depends on Task 06 for external editor integration
 last_updated = "2025-06-25T01:40:09.513224"
 +++
@@ -12,8 +12,8 @@ last_updated = "2025-06-25T01:40:09.513224"
 
 ## Status
 
-**General Status**: Not started  
-**Summary**: Not started; missing Implementation details (How it was implemented and How it works).
+**General Status**: open  
+**Summary**: open; missing Implementation details (How it was implemented and How it works).
 
 ## Goal
 

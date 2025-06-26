@@ -1,7 +1,7 @@
 +++
 id = "14"
 title = "AI‑Generated Approval Predicate Suggestions"
-status = "Not started"
+status = "open"
 dependencies = "02,11" # Rationale: depends on Task 02 for auto-approval predicates and Task 11 for predicate invocation logic
 last_updated = "2025-06-25T01:40:09.511783"
 +++
@@ -12,8 +12,8 @@ last_updated = "2025-06-25T01:40:09.511783"
 
 ## Status
 
-**General Status**: Not started  
-**Summary**: Not started; missing Implementation details (How it was implemented and How it works).
+**General Status**: open  
+**Summary**: open; missing Implementation details (How it was implemented and How it works).
 
 ## Goal
 

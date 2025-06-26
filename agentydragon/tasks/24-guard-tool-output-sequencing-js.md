@@ -1,7 +1,7 @@
 +++
 id = "24"
 title = "Guard Against Missing Tool Output in JS Server Sequencing"
-status = "Not started"
+status = "open"
 dependencies = "" # No prerequisites
 last_updated = "2025-06-25T01:40:09.600000"
 +++

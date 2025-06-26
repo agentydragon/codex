@@ -1,7 +1,7 @@
 +++
 id = "41"
 title = "Slash-command /init to load init prompt into composer"
-status = "Not started"
+status = "open"
 freeform_status = ""
 dependencies = ""
 last_updated = "2025-06-25T11:23:30Z"

@@ -1,7 +1,7 @@
 +++
 id = "39"
 title = "Fix Coloring of Left-Indented Patch Diffs"
-status = "Not started"
+status = "open"
 dependencies = ""
 summary = "Patch diffs rendered with left indentation mode are not colored correctly, losing syntax highlighting."
 last_updated = "2025-06-25T00:00:00Z"
@@ -13,7 +13,7 @@ last_updated = "2025-06-25T00:00:00Z"
 
 ## Status
 
-**General Status**: Not started  
+**General Status**: open  
 **Summary**: Diagnose offset logic in diff renderer and adjust color processing to account for indentation.
 
 ## Goal
