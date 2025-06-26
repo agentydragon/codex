@@ -2,6 +2,7 @@
 id = "04"
 title = "Auto-Mount Entire Repo and Auto-CD to Subfolder"
 status = "open"
+freeform_status = ""
 dependencies = "01" # Rationale: depends on Task 01 for mount-add/remove foundational commands
 last_updated = "2025-06-25T01:40:09.800000"
 +++
@@ -54,10 +55,14 @@ Allow users to enable a flag so that each session:
 ## Implementation
 
 **How it was implemented**  
-*(Not implemented yet)*
+- Extended `ConfigToml` with `auto_mount_repo: bool` and `mount_prefix: String` (default `/workspace`) in `codex-rs/config.rs`.
+- Added Git-root detection helper `find_git_root(cwd: &Path) -> Option<PathBuf>` in `codex_core::util`.
+- Updated sandbox startup logic (`apply_sandbox_policy_to_current_thread`) to bind-mount the repo root into `mount_prefix` when `auto_mount_repo` is true, creating the mount-point directory if needed.
+- After mounting, adjusted the process working directory to `mount_prefix.join(relative_path)` so that subsequent operations mirror the user's original subfolder.
+- Updated `config.md` documentation and added unit tests for Git-root detection and default config behavior.
 
 **How it works**  
-*(Not implemented yet)*
+When `auto_mount_repo` is enabled, the agent locates the repository root, bind-mounts the entire repo into the sandbox under `mount_prefix`, and changes the working directory inside the sandbox to match the user's original relative path. All file operations then occur within the mounted workspace.
 
 ## Notes
 - This offloads the entire monorepo into the session, leaving the user’s original clone untouched.

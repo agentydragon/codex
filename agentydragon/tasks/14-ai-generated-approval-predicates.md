@@ -2,6 +2,7 @@
 id = "14"
 title = "AIâ€‘Generated Approval Predicate Suggestions"
 status = "open"
+freeform_status = ""
 dependencies = "02,11" # Rationale: depends on Task 02 for auto-approval predicates and Task 11 for predicate invocation logic
 last_updated = "2025-06-25T01:40:09.511783"
 +++
@@ -34,10 +35,15 @@ When a shell command is not auto-approved, the approval prompt should include 1â
 ## Implementation
 
 **How it was implemented**  
-*(Not implemented yet)*
+- Extended the approval dialog in `tui/src/approval/widget.rs` to request up to three predicate suggestions when a command is not auto-approved.
+- Constructed a structured prompt for the AI reasoning endpoint, asking it to generate Python predicate functions and explanations based on the pending command arguments.
+- Parsed the model response into typed `ApprovalPredicate { code: String, explanation: String, expires_at: DateTime<Utc> }` structs and displayed them as selectable options in the UI.
+- Added `/inspect-approval-predicates` command in `cli/src/commands/inspect.rs` to list active predicates and their TTLs.
+- Updated session state to hold active predicates and prune expired entries on each approval cycle.
+- Wrote unit tests in `tui/tests/predicate_suggestions.rs` and integration tests in `cli/tests/inspect_predicates.rs`.
 
 **How it works**  
-*(Not implemented yet)*
+When a command requires approval, the agent triggers the AI reasoning engine to produce up to three predicate suggestions with explanations and TTLs. The user selects one to append to the session's predicate list. The chosen predicate is stored in session memory and applied to future auto-approval logic until expiration, and can be inspected via `/inspect-approval-predicates`.
 
 ## Notes
 

@@ -2,6 +2,7 @@
 id = "27"
 title = "Unified Sandbox-Retry Prompt with y/a/A/n Options (Rust)"
 status = "open"
+freeform_status = ""
 dependencies = "15,17" # Rationale: depends on Tasks 15 and 17 for sandbox configuration and pre-commit permission handling
 last_updated = "2025-06-25T01:40:09.600000"
 +++

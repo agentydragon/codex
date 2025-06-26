@@ -2,6 +2,7 @@
 id = "12"
 title = "Runtime Internet Connection Toggle"
 status = "open"
+freeform_status = ""
 dependencies = "" # No prerequisites
 last_updated = "2025-06-25T01:40:09.509507"
 +++
@@ -31,10 +32,14 @@ Allow users to enable or disable internet access at runtime within their contain
 ## Implementation
 
 **How it was implemented**  
-*(Not implemented yet)*
+- Added a `/toggle-network <on|off>` CLI command handler in `cli/src/commands/network.rs` and a corresponding slash command in the TUI.
+- Introduced `network_enabled: bool` in the session state model and persisted it in the session JSON under `.codex/sessions/<UUID>/session_meta.log`.
+- Implemented runtime network policy updates by invoking the sandbox network toggle APIs: updating seccomp/Landlock rules on Linux and Seatbelt profiles on macOS; provided a no-op stub for Windows with a warning.
+- Updated the TUI prompt renderer to display a 🌐 or 🚫 icon based on the current `network_enabled` state.
+- Wrote unit tests mocking sandbox backends in `cli/tests/network_toggle.rs` and integration tests verifying persistence across session resume.
 
 **How it works**  
-*(Not implemented yet)*
+Users invoke `/toggle-network on|off` at runtime to immediately enable or disable outbound network access. The agent dynamically updates the sandbox policy without restart, and the TUI prompt reflects the latest network status. On session restore, the last network state is reapplied automatically.
 
 ## Notes
 

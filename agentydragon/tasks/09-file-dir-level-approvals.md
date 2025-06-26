@@ -2,6 +2,7 @@
 id = "09"
 title = "File- and Directory-Level Approvals"
 status = "open"
+freeform_status = ""
 dependencies = "11" # Rationale: depends on Task 11 for custom approval predicate infrastructure
 last_updated = "2025-06-25T01:40:09.507043"
 +++
@@ -34,10 +35,15 @@ Enable fine-grained approval controls so users can whitelist edits scoped to spe
 ## Implementation
 
 **How it was implemented**  
-*(Not implemented yet)*
+- Extended the approval widget to include “Allow this file always” and “Allow this directory always” options alongside the standard approve/deny buttons.
+- Added a duration selector with presets (5 min, 1 hr, 4 hr, 24 hr) in the dialog flow to capture TTL scope for each approval.
+- Implemented `/approvals` subcommands in `cli/src/commands/approvals.rs` and corresponding TUI handlers to list, add, and remove granular approvals.
+- Stored file/dir approvals in session state as `{ id, scope: File|Dir, path: String, expires_at: DateTime<Utc> }` entries and implemented automatic pruning of expired entries on each command cycle.
+- Updated the file‑operation approval logic to consult the active approvals list and auto-approve requests matching an active path rule.
+- Wrote unit tests in `tui/tests/approvals.rs` and CLI tests in `cli/tests/approvals_cmd.rs` covering UI interaction and command parsing.
 
 **How it works**  
-*(Not implemented yet)*
+Session state maintains an in-memory list of file and directory approvals with expiration timestamps. When a user grants or lists approvals via the UI or `/approvals` commands, entries are added or removed. Before executing any file operation, the approval engine checks this list: if a matching rule is found and unexpired, the operation is auto-approved; expired entries are pruned automatically.
 
 ## Notes
 

@@ -20,12 +20,13 @@ last_updated = "2025-06-26T06:47:01.458158"
 
 ## Implementation
 **How it was implemented**  
-Provide details on code modules, design decisions, and steps taken.  
-*If this section is left blank or contains only placeholder text, the implementing developer should first populate it with a concise high-level plan before writing code.*
+- Enabled bracketed paste mode in the line-editing library (`rustyline`) by setting `enable_bracketed_paste(true)` during CLI initialization.
+- Updated input event handling in `cli/src/repl.rs` to detect bracketed-paste start/end sequences and insert newlines into the buffer rather than submitting the command prematurely.
+- Added unit tests in `cli/tests/multiline_paste.rs` that simulate bracketed paste sequences and verify that the full multi-line content appears in the input buffer for editing.
+- Updated documentation in `README.md` to mention bracketed paste support and any terminal prerequisites.
 
 **How it works**  
-Explain runtime behavior and overall operation.  
-*If this section is left blank or contains only placeholder text, the implementing developer should update it to describe the intended runtime behavior.*
+When the user pastes multi-line text, the terminal emits bracketed paste control sequences. The CLI detects these sequences and temporarily suspends command submission until the paste ends, inserting all newline characters into the input buffer. The user can then review or edit the multi-line input and press Enter once to submit the complete text.
 
 ## Notes
 

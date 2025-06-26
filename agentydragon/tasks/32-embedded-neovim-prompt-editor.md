@@ -2,6 +2,7 @@
 id = "32"
 title = "Embedded Neovim Prompt Editor"
 status = "open"
+freeform_status = ""
 dependencies = "06" # Rationale: depends on Task 06 for external editor integration
 last_updated = "2025-06-25T01:40:09.513224"
 +++

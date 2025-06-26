@@ -2,6 +2,7 @@
 id = "39"
 title = "Fix Coloring of Left-Indented Patch Diffs"
 status = "open"
+freeform_status = ""
 dependencies = ""
 summary = "Patch diffs rendered with left indentation mode are not colored correctly, losing syntax highlighting."
 last_updated = "2025-06-25T00:00:00Z"

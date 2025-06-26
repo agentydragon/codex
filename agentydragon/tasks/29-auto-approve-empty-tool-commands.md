@@ -2,6 +2,7 @@
 id = "29"
 title = "Auto-Approve Empty-Array Tool Invocations"
 status = "open"
+freeform_status = ""
 dependencies = "02" # Rationale: depends on Task 02 for auto-approval logic
 last_updated = "2025-06-25T01:40:09.600000"
 +++
