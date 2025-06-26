@@ -10,7 +10,8 @@ e, “Status”, “Goal”, and sections for “Acceptance Criteria”, “Impl
    - Implement `agentydragon/tools/create_task_worktree.py` with:
      - `--agent` mode to spin up a Codex agent in the worktree,
      - `--tmux` to tile panes for multiple tasks in a single tmux session,
-     - two‑digit or slug ID resolution.
+     - two‑digit or slug ID resolution,
+     - `--rebase` mode to launch a Rebase agent for updating the branch onto the latest integration.
    - Ensure usage, help text, and numeric/slug handling are correct.
 
 3. **Helper scripts**

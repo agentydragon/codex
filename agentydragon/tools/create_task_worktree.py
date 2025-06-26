@@ -64,13 +64,19 @@ def resolve_slug(input_id: str) -> str:
     is_flag=True,
     help="Skip the initial presubmit pre-commit checks when creating a new worktree.",
 )
+@click.option(
+    "--rebase",
+    "rebase_mode",
+    is_flag=True,
+    help="Launch Rebase agent to update the branch onto the latest integration branch; implies --agent and --interactive.",
+)
 @click.argument("task_inputs", nargs=-1, required=True)
-def main(agent, tmux_mode, interactive, shell_mode, skip_presubmit, task_inputs):
-    """Create/reuse a task worktree and optionally launch a Dev agent or tmux session."""
+def main(agent, tmux_mode, interactive, shell_mode, skip_presubmit, rebase_mode, task_inputs):
+    """Create/reuse a task worktree and optionally launch a Dev or Rebase agent or tmux session."""
     # shell mode implies interactive (skip exec within the worktree)
     if shell_mode:
         interactive = True
-    if interactive or shell_mode:
+    if interactive or shell_mode or rebase_mode:
         agent = True
 
     if tmux_mode:
@@ -85,7 +91,9 @@ def main(agent, tmux_mode, interactive, shell_mode, skip_presubmit, task_inputs)
         for idx, inp in enumerate(task_inputs):
             slug = resolve_slug(inp)
             cmd = [sys.executable, "-u", __file__]
-            if agent:
+            if rebase_mode:
+                cmd.append("--rebase")
+            elif agent:
                 cmd.append("--agent")
             cmd.append(slug)
             if idx == 0:
@@ -170,7 +178,10 @@ def main(agent, tmux_mode, interactive, shell_mode, skip_presubmit, task_inputs)
                 "Warning: pre-commit not installed; skipping presubmit checks", err=True
             )
 
-    click.echo(f"Launching Developer Codex agent for task {slug} in sandboxed worktree")
+    # Determine Codex invocation and prompt based on mode
+    click.echo(
+        f"Launching {'Rebase' if rebase_mode else 'Developer'} Codex agent for task {slug} in sandboxed worktree"
+    )
     # Use codex's built-in --cd flag instead of changing working dir
     cd_arg = ["--cd", str(wt_path)]
     if shell_mode:
@@ -180,42 +191,24 @@ def main(agent, tmux_mode, interactive, shell_mode, skip_presubmit, task_inputs)
     else:
         cmd = ["codex", "--full-auto", "exec"] + cd_arg
 
-    # Build a concise task reference instead of pasting full spec
-    md_path = tasks_dir() / f"{slug}.md"
-    text = md_path.read_text(encoding="utf-8")
-    m = re.search(r'title\s*=\s*"([^"]+)"', text)
-    title = m.group(1) if m else slug
-    task_ref = (
-        f'You are working on task {slug}: "{title}". '
-        f"See the full specification in {md_path}."
-    )
-    # If fixing a prior commit failure, include its error details
-    if err_msg := os.environ.get("FIX_COMMIT_ERROR"):
-        task_ref += (
-            f"\n\nThe previous commit attempt failed with errors:\n{err_msg}"  # noqa: E501
-            "\nPlease fix these errors and re-run pre-commit before committing changes."
-        )
-
-    base_prompt = (repo_root() / "agentydragon" / "prompts" / "developer.md").read_text(
+    # Assemble base prompt
+    prompt_name = "rebase.md" if rebase_mode else "developer.md"
+    base_prompt = (repo_root() / "agentydragon" / "prompts" / prompt_name).read_text(
         encoding="utf-8"
     )
-    run(cmd + [base_prompt + "\n\n" + task_ref])
-    # After Developer agent exits, if task status is Done, invoke Commit agent to stage and commit changes
-    task_path = tasks_dir() / f"{slug}.md"
-    content = task_path.read_text(encoding="utf-8")
-    m = re.search(r'^status\s*=\s*"([^"]+)"', content, re.MULTILINE)
-    status = m.group(1) if m else None
-    if status and status.lower() == "done":
-        click.echo(f"Task {slug} marked Done; running Commit agent helper")
-        commit_script = (
-            repo_root() / "agentydragon" / "tools" / "launch_commit_agent.py"
-        )
-        # Launch commit agent from the main repo root, not inside the task worktree
-        run([sys.executable, str(commit_script), slug], cwd=str(repo_root()))
+    # Contextual task or branch reference
+    if rebase_mode:
+        context = f"You are on branch '{branch}'. Below is context to perform a rebase onto 'agentydragon'."
     else:
-        click.echo(
-            f"Task {slug} status is '{status or 'unknown'}'; skipping Commit agent helper"
+        md_path = tasks_dir() / f"{slug}.md"
+        text = md_path.read_text(encoding="utf-8")
+        m = re.search(r'title\s*=\s*"([^"]+)"', text)
+        title = m.group(1) if m else slug
+        context = (
+            f'You are working on task {slug}: "{title}". ' \
+            f"See the full specification in {md_path}."
         )
+    run(cmd + [base_prompt + "\n\n" + context])
 
 
 if __name__ == "__main__":
