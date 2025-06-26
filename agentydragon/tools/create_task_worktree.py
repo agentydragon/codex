@@ -7,6 +7,7 @@ import subprocess
 import sys
 import re
 import shlex
+import shutil
 from pathlib import Path
 
 import click
@@ -155,21 +156,26 @@ def main(
         src = str(repo_root())
         dst = str(wt_path)
         # Hydrate the worktree filesystem via CoW copy: prefer cp with reflink, fallback to rsync
-        if sys.platform == "darwin":
-            cp_cmd = ["cp", "-cRp", f"{src}/.", f"{dst}/"]
-        else:
-            cp_cmd = ["cp", "--archive", "--reflink=auto", f"{src}/.", f"{dst}/"]
-        try:
-            run(cp_cmd)
-        except subprocess.CalledProcessError:
+        # Hydrate via CoW copy if possible, excluding the .worktrees directory; fallback to rsync
+        cp_cmd = None
+        if shutil.which("cp") and sys.platform != "darwin":
+            # Copy all top-level entries except .worktrees to avoid recursion
+            base = Path(src)
+            entries = [str(base / p.name) for p in base.iterdir() if p.name != ".worktrees"]
+            cp_cmd = ["cp", "--archive", "--reflink=auto"] + entries + [dst]
+            try:
+                run(cp_cmd)
+            except subprocess.CalledProcessError:
+                cp_cmd = None
+        if not cp_cmd:
             rsync_cmd = [
                 "rsync",
                 "-a",
                 "--delete",
-                f"{src}/",
-                f"{dst}/",
                 "--exclude=.git*",
                 "--exclude=.worktrees/",
+                f"{src}/",
+                f"{dst}/",
             ]
             run(rsync_cmd)
         # Guard against nested worktrees in the new worktree (avoid runaway recursion)

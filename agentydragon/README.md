@@ -66,11 +66,14 @@ Tasks live under `agentydragon/tasks/` as individual Markdown files. Please upda
 -   agentydragon/tools/create_task_worktree.py [--agent] [--tmux] [--interactive] [--shell] [--skip-presubmit] <task-slug|NN> [<task-slug|NN>...]
 -   ```
 -
--  Without `--agent`, this creates or reuses a worktree at
--  `agentydragon/tasks/.worktrees/<task-id>-<task-slug>` off the `agentydragon` branch.
--  Internally, the helper uses CoW hydration instead of a normal checkout: it registers the worktree with `git worktree add --no-checkout`, then performs a filesystem-level reflink
--  of all files (macOS: `cp -cRp`; Linux: `cp --reflink=auto`), falling back to `rsync` if reflinks aren’t supported. This makes new worktrees appear nearly instantly on supported filesystems while
--  preserving untracked files.
+-Without `--agent`, this creates or reuses a worktree at
+-`agentydragon/tasks/.worktrees/<task-id>-<task-slug>` off the `agentydragon` branch.
+-Internally, the helper uses copy-on-write hydration rather than a normal checkout:
+-it registers the worktree (`git worktree add --no-checkout`), then performs a filesystem-level
+-CoW copy of all top-level entries (excluding the `.worktrees/` directory to avoid recursion) via
+-`cp --archive --reflink=auto`. If that reflink copy fails or isn’t supported, it falls back to
+-`rsync -a --delete --exclude=.git* --exclude=.worktrees/`. This yields near-instant setup on
+-reflink-capable filesystems while preserving untracked files.
   -  With `--agent`, after setting up a new worktree it runs presubmit pre-commit checks (aborting with a clear message on failure unless `--skip-presubmit` is passed), then launches the Developer Codex agent (using `prompts/developer.md` and the task file).
   -  After the Developer agent exits, if the task’s **Status** is set to `Done`, it automatically runs the Commit agent helper to stage fixes and commit the work.
 **Commit agent helper**: in `agentydragon/tasks/`, run:
