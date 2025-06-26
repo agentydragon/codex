@@ -270,8 +270,8 @@ def status(timings: bool):
         "Status",
         "Depends on",
         "Updated",
-        "Branch Status",
-        "Worktree Status",
+        "Branch",
+        "Worktree",
     ]
 
     if timings:
