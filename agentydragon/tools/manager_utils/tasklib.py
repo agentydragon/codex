@@ -54,13 +54,12 @@ def list_task_files() -> list[Path]:
 
 
 class TaskStatus(str, Enum):
-    NOT_STARTED = "Not started"
-    IN_PROGRESS = "In progress"
-    NEEDS_INPUT = "Needs input"
-    NEEDS_MANUAL_REVIEW = "Needs manual review"
-    DONE = "Done"
-    CANCELLED = "Cancelled"
-    MERGED = "Merged"
+    NOT_STARTED = "open"
+    IN_PROGRESS = "wip"
+    NEEDS_INPUT = "needsinput"
+    DONE = "done"
+    CANCELLED = "cancelled"
+    MERGED = "merged"
 
 
 class TaskMeta(BaseModel):

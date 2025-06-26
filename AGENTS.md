@@ -35,8 +35,9 @@ code in this repository.
 - All tasks are defined as individual Markdown files under `agentydragon/tasks/` using the task template.
 - When creating a new task file, you **must** populate the metadata fields at the top, including:
   - `id`: two-digit task ID
-  - `title`: concise task title
-  - `status`: initial status (e.g., `Not started`)
+  - `title`: concise task title (max 40 characters)
+  - `status`: initial status (e.g., `open`)
+    _(Statuses must be lowercase with no whitespace.)_
   - `dependencies`: list of task IDs that must be completed before this one (populate with `""` only if truly independent)
   - `last_updated`: timestamp in ISO format
 - Filling out `dependencies` is your responsibility when creating or updating a task: do not leave it blank if there are ordering requirements.
