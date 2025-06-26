@@ -120,7 +120,7 @@ def status(timings: bool):
         print(f"Reloaded worktree tasks in {t1 - t0:.3f}s")
 
     # Build dependency graph, excluding already merged tasks
-    merged_ids = {tid for tid, m in all_meta.items() if m.status == "Merged"}
+    merged_ids = {tid for tid, m in all_meta.items() if m.status == TaskStatus.MERGED}
     deps_map: dict[str, list[str]] = {}
     for tid, meta in all_meta.items():
         deps_map[tid] = [
