@@ -516,24 +516,7 @@ def workflow():
                     .split()
                 )
                 if int(a_cnt) > 0:
-                    # offer only branches that merge cleanly into agentydragon
-                    try:
-                        base = subprocess.check_output(
-                            ["git", "merge-base", "agentydragon", bname], cwd=root
-                        ).decode().strip()
-                        tree = subprocess.check_output(
-                            ["git", "merge-tree", base, "agentydragon", bname], cwd=root
-                        ).decode()
-                        if "<<<<<<<" in tree:
-                            click.echo(
-                                f"Skipping branch {bname}: merge conflicts with agentydragon",
-                                err=True,
-                            )
-                        else:
-                            ready.append((tid, bname))
-                    except subprocess.CalledProcessError:
-                        # if merge-base or merge-tree fails, assume branch is mergeable
-                        ready.append((tid, bname))
+                    ready.append((tid, bname))
         # tasks needing input
         if meta.status == TaskStatus.NEEDS_INPUT:
             need_input.append(tid)
@@ -637,32 +620,61 @@ def workflow():
     for tid, bname in ready:
         if not click.confirm(f"Merge branch {bname} into agentydragon?", default=True):
             continue
+
+        # Check if branch would merge cleanly via git merge-tree (no working-tree modification)
+        try:
+            base = subprocess.check_output(
+                ["git", "merge-base", "agentydragon", bname], cwd=root, text=True
+            ).strip()
+            tree = subprocess.check_output(
+                ["git", "merge-tree", base, "agentydragon", bname], cwd=root,
+                text=True, errors="ignore"
+            )
+        except subprocess.CalledProcessError:
+            tree = ""
+
+        if "<<<<<<<" in tree:
+            click.echo(f"Branch {bname} has merge conflicts with agentydragon", err=True)
+            if not click.confirm(f"Launch Merge-Conflict-Resolution agent for branch {bname}?", default=True):
+                click.echo(f"Skipping merge for {bname}", err=True)
+                continue
+
+            # Invoke merge-conflict-resolution agent in the task worktree
+            task_wt = worktree_dir() / path_map[tid].stem
+            prompt_path = repo_root() / "agentydragon" / "prompts" / "merge-conflict-fix.md"
+            click.echo(f"Launching Merge Conflict Resolution agent for {bname} (cwd={task_wt})")
+            with open(prompt_path, "r") as f:
+                prompt = f.read()
+            prompt += (
+                f"\nBranch: {bname}\n"
+                "Please resolve all merge conflicts so that this branch can be cleanly "
+                "merged into 'agentydragon'."
+            )
+            subprocess.check_call(
+                ["codex", "exec", "--full-auto"], cwd=task_wt, input=prompt, text=True
+            )
+
+            # Re-run merge-tree to verify conflicts resolved
+            try:
+                base = subprocess.check_output(
+                    ["git", "merge-base", "agentydragon", bname], cwd=root,
+                    text=True
+                ).strip()
+                tree = subprocess.check_output(
+                    ["git", "merge-tree", base, "agentydragon", bname], cwd=root,
+                    text=True, errors="ignore"
+                )
+            except subprocess.CalledProcessError:
+                tree = ""
+
+            if "<<<<<<<" in tree:
+                click.echo(f"Branch {bname} still has merge conflicts, skipping", err=True)
+                continue
+
+        # Perform actual merge
         click.echo(f"Merging {bname} into agentydragon")
         subprocess.check_call(["git", "checkout", "agentydragon"], cwd=root)
-        try:
-            subprocess.check_call(["git", "merge", "--no-ff", bname], cwd=root)
-        except subprocess.CalledProcessError:
-            click.echo(f"Merge of branch {bname} failed due to conflicts", err=True)
-            if click.confirm(f"Launch Merge-Conflict-Resolution agent for branch {bname}?", default=True):
-                # Switch into the task's worktree so the agent resolves conflicts in context
-                task_wt = worktree_dir() / path_map[tid].stem
-                prompt_path = repo_root() / "agentydragon" / "prompts" / "merge-conflict-fix.md"
-                click.echo(f"Launching Merge Conflict Resolution agent for {bname} (cwd={task_wt})")
-                # Load the merge-conflict prompt template and append branch-specific instruction
-                with open(prompt_path, 'r') as f:
-                    prompt = f.read()
-                prompt += (
-                    f"\nBranch: {bname}\n"
-                    "Please resolve all merge conflicts so that this branch can be cleanly "
-                    "merged into 'agentydragon'."
-                )
-                subprocess.check_call(
-                    ["codex", "exec", "--full-auto"],
-                    cwd=task_wt,
-                    input=prompt,
-                    text=True,
-                )
-        # after successful merge or conflict handling, continue
+        subprocess.check_call(["git", "merge", "--no-ff", bname], cwd=root)
     # 3. Dispose merged tasks
     for tid, _ in ready:
         if click.confirm(f"Dispose task worktree and branch for {tid}?", default=False):
