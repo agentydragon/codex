@@ -2,7 +2,7 @@
 set -e
 
 # Usage:
-#   ./run_in_container.sh [--work_dir directory] "COMMAND"
+#   ./run_in_container.sh [--work_dir directory] [--init-hook "<hook command>"]... "COMMAND"
 #
 #   Examples:
 #     ./run_in_container.sh --work_dir project/code "ls -la"
@@ -13,15 +13,29 @@ WORK_DIR="${WORKSPACE_ROOT_DIR:-$(pwd)}"
 # Default allowed domains - can be overridden with OPENAI_ALLOWED_DOMAINS env var
 OPENAI_ALLOWED_DOMAINS="${OPENAI_ALLOWED_DOMAINS:-api.openai.com}"
 
-# Parse optional flag.
-if [ "$1" = "--work_dir" ]; then
-  if [ -z "$2" ]; then
-    echo "Error: --work_dir flag provided but no directory specified."
-    exit 1
-  fi
-  WORK_DIR="$2"
-  shift 2
-fi
+# Parse optional flags.
+# Repeatable --init-hook flag for user-defined init commands.
+INIT_HOOKS=()
+while [ "$1" = "--work_dir" ] || [ "$1" = "--init-hook" ]; do
+  case "$1" in
+    --work_dir)
+      if [ -z "$2" ]; then
+        echo "Error: --work_dir flag provided but no directory specified."
+        exit 1
+      fi
+      WORK_DIR="$2"
+      shift 2
+      ;;
+    --init-hook)
+      if [ -z "$2" ]; then
+        echo "Error: --init-hook flag provided but no hook command specified."
+        exit 1
+      fi
+      INIT_HOOKS+=("$2")
+      shift 2
+      ;;
+  esac
+done
 
 WORK_DIR=$(realpath "$WORK_DIR")
 
@@ -78,6 +92,13 @@ done
 
 # Set proper permissions on the domains file
 docker exec --user root "$CONTAINER_NAME" bash -c "chmod 444 /etc/codex/allowed_domains.txt && chown root:root /etc/codex/allowed_domains.txt"
+
+# Execute user-specified init hooks in the container
+if [ "${#INIT_HOOKS[@]}" -gt 0 ]; then
+  for hook in "${INIT_HOOKS[@]}"; do
+    docker exec --user root "$CONTAINER_NAME" bash -lc "$hook"
+  done
+fi
 
 # Initialize the firewall inside the container as root user
 docker exec --user root "$CONTAINER_NAME" bash -c "/usr/local/bin/init_firewall.sh"
