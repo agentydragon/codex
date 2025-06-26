@@ -19,6 +19,9 @@ use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::slash_command::SlashCommand;
 
+/// Contents of the init prompt loaded by the `/init` slash command.
+const INIT_PROMPT: &str = include_str!("../../../core/init.md");
+
 /// Minimum number of visible text rows inside the textarea.
 const MIN_TEXTAREA_ROWS: usize = 1;
 /// Rows consumed by the border.
@@ -72,6 +75,34 @@ mod tests {
             AppEvent::DispatchCommand(cmd) => assert_eq!(cmd, SlashCommand::Shell),
             other => panic!("Expected DispatchCommand(Shell), got {:?}", other),
         }
+    }
+
+    #[test]
+    fn init_command_injects_init_prompt() {
+        let (tx, _rx) = mpsc::channel();
+        let evt_tx = AppEventSender::new(tx);
+        let mut composer = ChatComposer::new(true, evt_tx.clone(), 5);
+        // Simulate typing "/init"
+        for ch in "/init".chars() {
+            let key_event = KeyEvent::new(KeyCode::Char(ch), KeyModifiers::empty());
+            let (_res, _redraw) = composer.handle_key_event(key_event);
+        }
+        // Tab to insert the command token
+        let (res, needs_redraw) =
+            composer.handle_key_event(KeyEvent::new(KeyCode::Tab, KeyModifiers::empty()));
+        assert!(needs_redraw);
+        assert_eq!(res, InputResult::None);
+        assert_eq!(composer.get_input_text(), "/init");
+        // Enter to execute init and inject the prompt
+        let (res, needs_redraw) =
+            composer.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+        assert!(needs_redraw);
+        assert_eq!(res, InputResult::None);
+        // Composer buffer should now contain the init prompt (ignoring trailing newline)
+        assert_eq!(
+            composer.get_input_text().trim_end_matches('\n'),
+            INIT_PROMPT.trim_end_matches('\n')
+        );
     }
 }
 
@@ -179,7 +210,7 @@ impl ChatComposer<'_> {
                 ctrl: false,
             } => {
                 if let Some(cmd) = popup.selected_command() {
-                    // Inline DSL for mount-add/remove with args or dispatch other commands.
+                    // Inline DSL for mount-add/remove with args, init prompt injection, or dispatch other commands.
                     let first_line = self
                         .textarea
                         .lines()
@@ -193,6 +224,14 @@ impl ChatComposer<'_> {
                     let mut parts = stripped.splitn(2, char::is_whitespace);
                     let _cmd_token = parts.next().unwrap_or("");
                     let args = parts.next().unwrap_or("").trim_start();
+                    // Inject init prompt into composer when slash command is /init
+                    if *cmd == SlashCommand::Init {
+                        self.textarea.select_all();
+                        self.textarea.cut();
+                        let _ = self.textarea.insert_str(INIT_PROMPT);
+                        self.command_popup = None;
+                        return (InputResult::None, true);
+                    }
                     // Launch external editor for prompt drafting when slash command is /edit-prompt
                     if *cmd == SlashCommand::EditPrompt {
                         self.open_external_editor();

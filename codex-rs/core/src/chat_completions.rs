@@ -40,7 +40,7 @@ pub(crate) async fn stream_chat_completions(
     let mut pending_call: Option<String> = None;
     let mut buf_user: Vec<serde_json::Value> = Vec::new();
 
-        let full_instructions = prompt.get_full_instructions(model);
+    let full_instructions = prompt.get_full_instructions(model);
     messages.push(json!({"role": "system", "content": full_instructions}));
 
     for item in &prompt.input {

@@ -496,6 +496,10 @@ impl<'a> App<'a> {
                             .app_event_tx
                             .send(AppEvent::InlineInspectEnv(String::new()));
                     }
+                    SlashCommand::Init => {
+                        // Injection of init prompt handled by composer; just redraw
+                        self.app_event_tx.send(AppEvent::Redraw);
+                    }
                     SlashCommand::Shell => {
                         if let AppState::Chat { widget } = &mut self.app_state {
                             widget.push_shell_command_interactive();

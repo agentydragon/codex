@@ -37,6 +37,14 @@ def _run_codex_exec(prompt: str, worktree: Path) -> None:
     click.echo(f"Running Codex exec: {' '.join(cmd)}")
     # Pass the prompt as CLI argument rather than via stdin
     subprocess.check_call(cmd + [prompt])
+
+def _launch_cmd_in_tmux(label: str, cmd: list[str], cwd: Path) -> None:
+    """Launch the given command list in a detached tmux session named by label."""
+    session = f"agentydragon-{label.replace('/', '-') }"
+    tmux_cmd = ["tmux", "new-session", "-d", "-s", session] + cmd
+    click.echo(f"Launching {label} in tmux session '{session}'")
+    subprocess.check_call(tmux_cmd, cwd=str(cwd))
+    click.echo(f"Attach with: tmux attach -t {session}")
 # Styling configuration for task statuses
 STATUS_COLORS: dict[str, dict[str, str]] = {
     TaskStatus.NOT_STARTED.value: {"fg": "reset"},
@@ -560,18 +568,24 @@ def workflow():
                 click.echo(f" {prefix} {tid} - {all_meta[tid].title}")
             click.echo("")
         if selected:
+            click.echo("Launching Commit agents in parallel for selected tasks:")
+            procs: list[tuple[str, subprocess.Popen]] = []
+            # Use external launch_commit_agent script to run in separate processes
+            script = repo_root() / "agentydragon" / "tools" / "launch_commit_agent.py"
             for tid in selected:
-                click.echo(f"Launching Commit agent for task {tid}")
-                # preserve working directory as commit_cmd may change cwd
-                orig_cwd = os.getcwd()
-                try:
-                    commit_cmd(args=[tid], standalone_mode=False)
-                except SystemExit as e:
-                    code = e.code or 1
-                    click.echo(f"Commit agent failed for {tid} (exit {code})", err=True)
-                    commit_failures.append((tid, f"exit {code}"))
-                finally:
-                    os.chdir(root)
+                click.echo(f"  - {tid}")
+                p = subprocess.Popen([
+                    sys.executable,
+                    str(script),
+                    tid
+                ], cwd=str(repo_root()), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                procs.append((tid, p))
+            # Collect results
+            for tid, p in procs:
+                ret = p.wait()
+                if ret != 0:
+                    click.echo(f"Commit agent for {tid} exited with status {ret}", err=True)
+                    commit_failures.append((tid, f"exit {ret}"))
 
     # 1a. Fixer phase: if any commit agents failed, offer a full-auto Dev agent to fix errors using multi-select
     if commit_failures:
@@ -595,33 +609,14 @@ def workflow():
                 click.echo(f" {prefix} {tid}: {err}")
             click.echo("")
         if fixes and click.confirm("Launch full-auto Dev agent for selected tasks?", default=True):
-            # Invoke the Dev fix agent in-process (silencing its own output)
-            from contextlib import redirect_stdout, redirect_stderr
-            import io
-
+            # Launch Dev fix agents in background tmux sessions
+            script = repo_root() / "agentydragon" / "tools" / "create_task_worktree.py"
             for tid, err in commit_failures:
                 if tid not in fixes:
                     continue
-                click.echo(f"Launching Dev fix agent for task {tid}")
-                # preserve working directory as the agent may change cwd
-                prev_cwd = os.getcwd()
-                prev_err = os.environ.get("FIX_COMMIT_ERROR")
-                os.environ["FIX_COMMIT_ERROR"] = err
-                buf = io.StringIO()
-                try:
-                    with redirect_stdout(buf), redirect_stderr(buf):
-                        create_task_worktree_cmd(args=["--agent", tid], standalone_mode=False)
-                    ret = 0
-                except SystemExit as e:
-                    ret = e.code or 1
-                finally:
-                    os.chdir(root)
-                if ret != 0:
-                    click.echo(f"Dev fix agent failed for {tid} (exit {ret})", err=True)
-                if prev_err is None:
-                    del os.environ["FIX_COMMIT_ERROR"]
-                else:
-                    os.environ["FIX_COMMIT_ERROR"] = prev_err
+                label = f"fix/{tid}"
+                cmd = [sys.executable, str(script), "--agent", tid]
+                _launch_cmd_in_tmux(label, cmd, root)
     # 2. Merge ready branches
     for tid, bname in ready:
         # Check if branch would merge cleanly via git merge-tree (no working-tree changes)
@@ -677,10 +672,25 @@ def workflow():
         click.echo(f"Merging {bname} into agentydragon")
         subprocess.check_call(["git", "checkout", "agentydragon"], cwd=root)
         subprocess.check_call(["git", "merge", "--no-ff", bname], cwd=root)
-    # 3. Dispose merged tasks
+    # 3. Dispose worktrees for tasks with no worktree (not started) or merged & clean worktree
     for tid, _ in ready:
-        if click.confirm(f"Dispose task worktree and branch for {tid}?", default=False):
-            subprocess.run([sys.executable, __file__, "dispose", tid], cwd=root)
+        meta = all_meta[tid]
+        slug = path_map[tid].stem
+        wt = worktree_dir() / slug
+        # Determine if worktree has uncommitted changes
+        dirty_wt = False
+        if wt.exists():
+            st = subprocess.run(
+                ["git", "status", "--porcelain"], cwd=wt,
+                capture_output=True, text=True
+            ).stdout.strip()
+            dirty_wt = bool(st)
+        # Offer dispose when (open & no worktree) or (merged & clean worktree)
+        if (meta.status.lower() == "open" and not wt.exists()) or (
+            meta.status.lower() == "merged" and wt.exists() and not dirty_wt
+        ):
+            if click.confirm(f"Dispose task worktree and branch for {tid}?", default=False):
+                subprocess.run([sys.executable, __file__, "dispose", tid], cwd=root)
     # 4. Tasks needing input
     if need_input:
         click.echo(f"Tasks needing input: {' '.join(need_input)}")
@@ -722,17 +732,12 @@ def workflow():
                 click.echo(f" {prefix} {tid} - {all_meta[tid].title}")
             click.echo("")
         if selected_unblocked:
-            click.echo("Launching Developer agents for selected unblocked tasks:")
+            click.echo("Launching Developer agents in background tmux sessions:")
+            script = repo_root() / "agentydragon" / "tools" / "create_task_worktree.py"
             for tid in selected_unblocked:
-                click.echo(f"  - {tid}")
-                # preserve working directory as the agent may change cwd
-                orig_cwd = os.getcwd()
-                try:
-                    create_task_worktree_cmd(
-                        args=["--agent", "--tmux", tid], standalone_mode=False
-                    )
-                finally:
-                    os.chdir(root)
+                label = f"develop/{tid}"
+                cmd = [sys.executable, str(script), "--agent", tid]
+                _launch_cmd_in_tmux(label, cmd, root)
     # Print timing for print/table phase and total
     # timings not supported for workflow
 

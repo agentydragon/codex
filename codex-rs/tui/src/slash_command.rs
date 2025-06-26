@@ -24,6 +24,9 @@ pub enum SlashCommand {
     /// Inspect sandbox and container environment (mounts, permissions, network).
     InspectEnv,
     /// Prompt to run a shell command in the container.
+    /// Load the initial prompt into the composer for editing.
+    Init,
+    /// Prompt to run a shell command in the container.
     Shell,
 }
 
@@ -41,6 +44,7 @@ impl SlashCommand {
             SlashCommand::InspectEnv => {
                 "Inspect sandbox and container environment (mounts, permissions, network)"
             }
+            SlashCommand::Init => "Load the initial prompt into the composer for editing.",
             SlashCommand::Shell => "Run a shell command in the container.",
             SlashCommand::Quit => "Exit the application.",
         }
@@ -72,5 +76,11 @@ mod tests {
     fn inspect_env_description_contains_keyword() {
         let desc = SlashCommand::InspectEnv.description();
         assert!(desc.contains("sandbox"), "description was: {}", desc);
+    }
+
+    #[test]
+    fn built_in_includes_init() {
+        let commands = built_in_slash_commands();
+        assert_eq!(commands.get("init"), Some(&SlashCommand::Init));
     }
 }

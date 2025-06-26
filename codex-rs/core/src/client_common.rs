@@ -42,7 +42,7 @@ impl Prompt {
     /// 2. Or, if CODEX_BASE_INSTRUCTIONS_FILE is set, load that file instead of the built-in prompt.
     /// 3. User instructions (e.g. from instructions.md and AGENTS.md), if any.
     /// 4. Apply-patch tool instructions when using GPT-4.1 models.
-pub(crate) fn get_full_instructions(&self, model: &str) -> Cow<'_, str> {
+    pub(crate) fn get_full_instructions(&self, model: &str) -> Cow<'_, str> {
         // Determine base instructions or override/disable via CODEX_BASE_INSTRUCTIONS_FILE
         let mut sections = Vec::new();
         match std::env::var("CODEX_BASE_INSTRUCTIONS_FILE") {

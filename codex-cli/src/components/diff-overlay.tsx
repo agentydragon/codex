@@ -53,17 +53,23 @@ export default function DiffOverlay({
 
   // Very small helper to colorize diff lines in a basic way.
   function renderLine(line: string, idx: number): JSX.Element {
-    let color: "green" | "red" | "cyan" | undefined = undefined;
-    if (line.startsWith("+")) {
+    // Preserve leading indentation but apply color to the diff markers and content.
+    const match = line.match(/^(\s*)(.*)$/);
+    const indent = match ? match[1] : "";
+    const content = match ? match[2] : line;
+    let color: "green" | "red" | "cyan" | undefined;
+    if (content.startsWith("+")) {
       color = "green";
-    } else if (line.startsWith("-")) {
+    } else if (content.startsWith("-")) {
       color = "red";
-    } else if (line.startsWith("@@") || line.startsWith("diff --git")) {
+    } else if (content.startsWith("@@") || content.startsWith("diff --git")) {
       color = "cyan";
     }
+    // Render indent uncolored and apply color only to content if applicable.
     return (
-      <Text key={idx} color={color} wrap="truncate-end">
-        {line === "" ? " " : line}
+      <Text key={idx} wrap="truncate-end">
+        {indent}
+        <Text color={color}>{content === "" ? " " : content}</Text>
       </Text>
     );
   }
