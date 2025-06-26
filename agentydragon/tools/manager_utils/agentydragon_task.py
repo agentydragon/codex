@@ -335,9 +335,13 @@ def status(timings: bool):
         items = " ".join(f"{tid} ({title})" for tid, title in ready_tasks)
         print(f"\n\033[33mReady to merge:\033[0m {items}")
 
-    # identify unblocked tasks (no remaining dependencies)
+    # identify unblocked tasks (no remaining dependencies and not already done/merged)
     unblocked = [
-        tid for tid in sorted_ids if tid not in merged_ids and not deps_map.get(tid)
+        tid
+        for tid in sorted_ids
+        if tid not in merged_ids
+        and all_meta[tid].status not in (TaskStatus.DONE,)
+        and not deps_map.get(tid)
     ]
     if unblocked:
         print(f"\n\033[1mUnblocked:\033[0m {' '.join(unblocked)}")
@@ -765,13 +769,21 @@ def workflow():
                 prefix = "[*]" if tid in selected_unblocked else "  *"
                 click.echo(f" {prefix} {tid} - {all_meta[tid].title}")
             click.echo("")
-        if selected_unblocked:
-            click.echo("Launching Developer agents in background tmux sessions:")
-            script = repo_root() / "agentydragon" / "tools" / "create_task_worktree.py"
-            for tid in selected_unblocked:
-                label = f"develop/{tid}"
-                cmd = [sys.executable, str(script), "--agent", tid]
-                _launch_cmd_in_tmux(label, cmd, root)
+    if selected_unblocked:
+        click.echo("Launching Developer agents in background tmux sessions:")
+        script = repo_root() / "agentydragon" / "tools" / "create_task_worktree.py"
+        for tid in selected_unblocked:
+            label = f"develop/{tid}"
+            cmd = [sys.executable, str(script), "--agent", tid]
+            _launch_cmd_in_tmux(label, cmd, root)
+
+    # 6. Report task statuses with color
+    click.echo("\nTask statuses:")
+    for tid in sorted_ids:
+        meta = all_meta[tid]
+        style_args = STATUS_COLORS.get(meta.status.value, {})
+        click.echo(click.style(f"  * {tid}: {meta.status.value}", **style_args))
+
     # Print timing for print/table phase and total
     # timings not supported for workflow
 

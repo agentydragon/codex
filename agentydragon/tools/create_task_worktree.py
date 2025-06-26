@@ -154,19 +154,24 @@ def main(
         run(["git", "worktree", "add", "--no-checkout", str(wt_path), branch])
         src = str(repo_root())
         dst = str(wt_path)
-        # Hydrate the worktree filesystem via rsync, excluding .git and any .worktrees to avoid recursion
-        rsync_cmd = [
-            "rsync",
-            "-a",
-            "--delete",
-            f"{src}/",
-            f"{dst}/",
-            "--exclude=.git*",
-            "--exclude=.worktrees/",
-        ]
-        if sys.platform != "darwin":
-            rsync_cmd.insert(3, "--reflink=auto")
-        run(rsync_cmd)
+        # Hydrate the worktree filesystem via CoW copy: prefer cp with reflink, fallback to rsync
+        if sys.platform == "darwin":
+            cp_cmd = ["cp", "-cRp", f"{src}/.", f"{dst}/"]
+        else:
+            cp_cmd = ["cp", "--archive", "--reflink=auto", f"{src}/.", f"{dst}/"]
+        try:
+            run(cp_cmd)
+        except subprocess.CalledProcessError:
+            rsync_cmd = [
+                "rsync",
+                "-a",
+                "--delete",
+                f"{src}/",
+                f"{dst}/",
+                "--exclude=.git*",
+                "--exclude=.worktrees/",
+            ]
+            run(rsync_cmd)
         # Guard against nested worktrees in the new worktree (avoid runaway recursion)
         nested = list(wt_path.rglob(".worktrees"))
         if nested:

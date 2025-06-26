@@ -1,9 +1,10 @@
 +++
 id = "35"
 title = "TUI Integration for Inspect-Env Command"
-status = "done"
-dependencies = "10" # Rationale: depends on Task 10 for container state inspection
-last_updated = "2025-06-25T11:38:19Z"
+status = "open"
+freeform_status = ""
+dependencies = "10"
+last_updated = "2025-06-26T20:44:11.839283"
 +++
 
 > *This task is specific to codex-rs.*
