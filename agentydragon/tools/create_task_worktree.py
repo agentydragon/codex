@@ -19,7 +19,6 @@ from common import (
     resolve_slug,
     sandbox_flags_for_worktree,
 )
-import tempfile
 
 
 def run(cmd, cwd=None):
@@ -255,51 +254,13 @@ def main(
 
     # Auto-commit when Developer agent finishes and task status is Done
     if not rebase_mode and not interactive and not shell_mode:
-        # Check task status for Done
+        # Launch commit agent when task status is Done
         md_path = tasks_dir() / f"{slug}.md"
         status_txt = md_path.read_text(encoding="utf-8")
         if re.search(r'status\s*=\s*"Done"', status_txt):
             click.echo(f"Status for {slug} is Done; running Commit agent...")
-            # Prepare temporary file for commit message
-            tmp = tempfile.NamedTemporaryFile(delete=False)
-            msg_file = Path(tmp.name)
-            tmp.close()
-            try:
-                # Abort if no changes to commit
-                st = subprocess.check_output(
-                    ["git", "status", "--porcelain"], cwd=str(wt_path), text=True
-                ).strip()
-                if not st:
-                    click.echo(
-                        f"No changes detected in worktree for '{slug}'; skipping commit.",
-                        err=True,
-                    )
-                else:
-                    # Run Commit agent to generate commit message
-                    cd_arg = ["--cd", str(wt_path)]
-                    cmd_c = ["codex"] + cd_arg + ["--full-auto", "exec", "--output-last-message", str(msg_file)]
-                    cmd_c += sandbox_flags_for_worktree(wt_path)
-                    prompt_c = (repo_root() / "agentydragon" / "prompts" / "commit.md").read_text(encoding="utf-8")
-                    task_txt = status_txt
-                    click.echo(f"Running commit agent: {' '.join(cmd_c)}")
-                    subprocess.check_call(cmd_c + [prompt_c + "\n\n" + task_txt], stdout=subprocess.DEVNULL)
-                    # Stage and commit all changes
-                    subprocess.check_call(["git", "add", "-A"], cwd=str(wt_path))
-                    try:
-                        subprocess.check_call(["git", "commit", "-F", str(msg_file)], cwd=str(wt_path))
-                    except subprocess.CalledProcessError as e:
-                        click.echo(f"Error running commit: {e}", err=True)
-                        msg = msg_file.read_text(encoding="utf-8")
-                        click.echo("Commit message was:\n" + msg)
-                        sys.exit(e.returncode)
-                    # Display commit message
-                    msg = msg_file.read_text(encoding="utf-8").strip()
-                    click.echo("Commit message:\n" + msg)
-            finally:
-                try:
-                    msg_file.unlink()
-                except Exception:
-                    pass
+            script = Path(__file__).resolve().parent / "launch_commit_agent.py"
+            subprocess.check_call([sys.executable, str(script), slug], cwd=str(repo_root()))
 
 
 if __name__ == "__main__":
