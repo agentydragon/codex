@@ -53,7 +53,7 @@ which go into `README.md`.
    exit 1
    ```
 3. Agent edits files to resolve remaining conflicts; remove conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`).
-4. Agent runs pre-commit checks and applies autofixes so that all hooks pass:
+4. Agent runs pre-commit checks and applies autofixes so that all hooks pass. If any hooks still fail after autofix, fix the issues manually until pre-commit succeeds:
    ```bash
    pre-commit run --all-files
    ```

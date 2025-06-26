@@ -25,7 +25,7 @@ Follow these steps exactly:
    exit 1
    ```
 5. Edit any files to resolve remaining conflicts; remove conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`).
-6. Run pre-commit checks and apply autofixes so that all hooks pass:
+6. Run pre-commit checks and apply autofixes so that all hooks pass. If hooks still fail after autofix, fix the issues manually until the pre-commit run succeeds:
    ```bash
    pre-commit run --all-files
    ```
