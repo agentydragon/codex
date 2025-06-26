@@ -10,6 +10,18 @@ import { log } from "src/utils/logger/log.js";
 import { fileURLToPath } from "url";
 
 /**
+ * Common writable roots that should always be allowed for write operations,
+ * even if not explicitly provided by the user.
+ * Without this root, it can cause:
+ * pyenv: cannot rehash: $HOME/.pyenv/shims isn't writable
+ */
+function getCommonRoots() {
+  return [
+    `${process.env["HOME"]}/.pyenv`,
+  ];
+}
+
+/**
  * Runs Landlock with the following permissions:
  * - can read any file on disk
  * - can write to process.cwd()
@@ -25,7 +37,8 @@ export async function execWithLandlock(
 ): Promise<ExecResult> {
   const sandboxExecutable = await getSandboxExecutable();
 
-  const extraSandboxPermissions = userProvidedWritableRoots.flatMap(
+  const fullWritableRoots = [...userProvidedWritableRoots, ...getCommonRoots()];
+  const extraSandboxPermissions = fullWritableRoots.flatMap(
     (root: string) => ["--sandbox-permission", `disk-write-folder=${root}`],
   );
 
