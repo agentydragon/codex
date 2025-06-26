@@ -554,21 +554,14 @@ def workflow():
                 click.echo(f" {prefix} {tid} - {all_meta[tid].title}")
             click.echo("")
         if selected:
-            procs: list[tuple[str, subprocess.Popen]] = []
-            script = repo_root() / "agentydragon" / "tools" / "launch_commit_agent.py"
             for tid in selected:
                 click.echo(f"Launching Commit agent for task {tid}")
-                p = subprocess.Popen([
-                    sys.executable,
-                    str(script),
-                    tid,
-                ], cwd=root)
-                procs.append((tid, p))
-            for tid, p in procs:
-                ret = p.wait()
-                if ret != 0:
-                    click.echo(f"Commit agent failed for {tid} (exit {ret})", err=True)
-                    commit_failures.append((tid, f"exit {ret}"))
+                try:
+                    commit_cmd(args=[tid], standalone_mode=False)
+                except SystemExit as e:
+                    code = e.code or 1
+                    click.echo(f"Commit agent failed for {tid} (exit {code})", err=True)
+                    commit_failures.append((tid, f"exit {code}"))
 
     # 1a. Fixer phase: if any commit agents failed, offer a full-auto Dev agent to fix errors using multi-select
     if commit_failures:
@@ -592,21 +585,29 @@ def workflow():
                 click.echo(f" {prefix} {tid}: {err}")
             click.echo("")
         if fixes and click.confirm("Launch full-auto Dev agent for selected tasks?", default=True):
+            # Invoke the Dev fix agent in-process (silencing its own output)
+            from contextlib import redirect_stdout, redirect_stderr
+            import io
+
             for tid, err in commit_failures:
-                if tid in fixes:
-                    click.echo(f"Launching Dev fix agent for task {tid}")
-                    prev = os.environ.get("FIX_COMMIT_ERROR")
-                    os.environ["FIX_COMMIT_ERROR"] = err
-                    try:
-                        create_task_worktree_cmd(
-                            args=["--agent", tid], standalone_mode=False
-                        )
-                    except SystemExit:
-                        pass
-                    if prev is None:
-                        del os.environ["FIX_COMMIT_ERROR"]
-                    else:
-                        os.environ["FIX_COMMIT_ERROR"] = prev
+                if tid not in fixes:
+                    continue
+                click.echo(f"Launching Dev fix agent for task {tid}")
+                prev = os.environ.get("FIX_COMMIT_ERROR")
+                os.environ["FIX_COMMIT_ERROR"] = err
+                buf = io.StringIO()
+                try:
+                    with redirect_stdout(buf), redirect_stderr(buf):
+                        create_task_worktree_cmd(args=["--agent", tid], standalone_mode=False)
+                    ret = 0
+                except SystemExit as e:
+                    ret = e.code or 1
+                if ret != 0:
+                    click.echo(f"Dev fix agent failed for {tid} (exit {ret})", err=True)
+                if prev is None:
+                    del os.environ["FIX_COMMIT_ERROR"]
+                else:
+                    os.environ["FIX_COMMIT_ERROR"] = prev
     # 2. Merge ready branches
     for tid, bname in ready:
         if click.confirm(f"Merge branch {bname} into agentydragon?", default=True):
