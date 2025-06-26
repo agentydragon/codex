@@ -33,6 +33,50 @@ While we are [working to close the gap between the TypeScript and Rust implement
 
 Codex supports a rich set of configuration options. Note that the Rust CLI uses `config.toml` instead of `config.json`. See [`config.md`](./config.md) for details.
 
+#### `auto_allow` (custom approval predicates)
+
+User-defined predicate scripts that vote on each shell command before manual approval.
+Each script is invoked with the full candidate command as its only argument and must
+write exactly one of `allow`, `deny`, or `no-opinion` to stdout.
+
+```toml
+[[auto_allow]]
+script = "/path/to/approve_predicate.py"
+```
+
+##### Example: Python approval predicate (`approve_predicate.py`)
+
+```python
+#!/usr/bin/env python3
+"""
+Custom auto-approval predicate for codex-rs.
+
+This script reads the candidate shell command as its sole argument and prints exactly
+one of: "allow", "deny", or "no-opinion" to stdout.
+"""
+
+import sys
+
+def main(cmd: str) -> None:
+    # Deny destructive commands
+    if "rm -rf /" in cmd or "rm -rf --no-preserve-root" in cmd:
+        print("deny")
+        return
+
+    # Auto-allow git operations
+    if cmd.strip().startswith("git "):
+        print("allow")
+        return
+
+    # Otherwise, no opinion → fall back to manual approval
+    print("no-opinion")
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.exit("Usage: approve_predicate.py '<full command line>'")
+    main(sys.argv[1])
+```
+
 ### Model Context Protocol Support
 
 Codex CLI functions as an MCP client that can connect to MCP servers on startup. See the [`mcp_servers`](./config.md#mcp_servers) section in the configuration documentation for details.
