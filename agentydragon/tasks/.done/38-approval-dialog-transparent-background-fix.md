@@ -1,7 +1,7 @@
 +++
 id = "38"
 title = "Fix Approval Dialog Transparent Background"
-status = "Done"
+status = "done"
 dependencies = ""
 summary = "The approval dialog background is transparent, causing prompt text underneath to overlap and become unreadable."
 last_updated = "2025-06-25T23:00:00.000000"

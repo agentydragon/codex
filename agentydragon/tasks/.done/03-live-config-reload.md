@@ -1,7 +1,7 @@
 +++
 id = "03"
 title = "Live Config Reload and Prompt on Changes"
-status = "Merged"
+status = "merged"
 dependencies = "02,07,09,11,14,29"
 last_updated = "2025-06-25T05:36:17.783726"
 +++

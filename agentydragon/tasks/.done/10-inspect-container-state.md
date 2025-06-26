@@ -1,7 +1,7 @@
 +++
 id = "10"
 title = "Inspect Container State (Mounts, Permissions, Network)"
-status = "Merged"
+status = "merged"
 dependencies = ""
 last_updated = "2025-06-25T04:07:56.197523"
 +++

@@ -1,7 +1,7 @@
 +++
 id = "35"
 title = "TUI Integration for Inspect-Env Command"
-status = "Done"
+status = "done"
 dependencies = "10" # Rationale: depends on Task 10 for container state inspection
 last_updated = "2025-06-25T11:38:19Z"
 +++

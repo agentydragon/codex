@@ -1,7 +1,7 @@
 +++
 id = "19"
 title = "Bash Command Rendering Improvements for Less Verbosity"
-status = "Merged"
+status = "merged"
 dependencies = "02,07,09,11,14,29"
 last_updated = "2025-06-25T05:36:32.641375"
 +++

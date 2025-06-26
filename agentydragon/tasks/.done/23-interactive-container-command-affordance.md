@@ -1,7 +1,7 @@
 +++
 id = "23"
 title = "Interactive Container Command Affordance via Hotkey"
-status = "Merged"
+status = "merged"
 freeform_status = ""
 dependencies = "01"
 last_updated = "2025-06-25T12:10:10.584536"

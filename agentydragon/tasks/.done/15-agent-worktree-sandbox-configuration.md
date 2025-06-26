@@ -1,7 +1,7 @@
 +++
 id = "15"
 title = "Agent Worktree Sandbox Configuration"
-status = "Merged"
+status = "merged"
 dependencies = "02,07,09,11,14,29"
 last_updated = "2025-06-25T07:26:13.570520"
 +++

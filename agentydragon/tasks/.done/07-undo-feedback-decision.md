@@ -1,7 +1,7 @@
 +++
 id = "07"
 title = "Undo Feedback Decision with Esc Key"
-status = "Merged"
+status = "merged"
 dependencies = "01,04,10,12,16,17"
 last_updated = "2025-06-25T01:40:09.506146"
 +++

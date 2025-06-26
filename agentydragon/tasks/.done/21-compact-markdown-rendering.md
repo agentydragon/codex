@@ -1,7 +1,7 @@
 +++
 id = "21"
 title = "Compact Markdown Rendering Option"
-status = "Merged"
+status = "merged"
 dependencies = "03,06,08,13,15,32,18,19,22,23"
 last_updated = "2025-06-25T05:55:23.855039"
 +++

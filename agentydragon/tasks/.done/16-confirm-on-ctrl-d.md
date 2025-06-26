@@ -1,7 +1,7 @@
 +++
 id = "16"
 title = "Confirm on Ctrl+D to Exit"
-status = "Merged"
+status = "merged"
 dependencies = ""
 last_updated = "2025-06-25T05:36:23.493497"
 +++

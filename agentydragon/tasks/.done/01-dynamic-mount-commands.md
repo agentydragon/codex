@@ -1,7 +1,7 @@
 +++
 id = "01"
 title = "Dynamic Mount-Add and Mount-Remove Commands"
-status = "Merged"
+status = "merged"
 dependencies = ""
 last_updated = "2025-06-25T01:40:09.501150"
 +++
