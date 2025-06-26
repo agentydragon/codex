@@ -36,7 +36,6 @@ STATUS_COLORS: dict[str, dict[str, str]] = {
     TaskStatus.NOT_STARTED.value: {"fg": "reset"},
     TaskStatus.IN_PROGRESS.value: {"fg": "yellow"},
     TaskStatus.NEEDS_INPUT.value: {"fg": "red"},
-    TaskStatus.NEEDS_MANUAL_REVIEW.value: {"fg": "red"},
     TaskStatus.DONE.value: {"fg": "green"},
     TaskStatus.CANCELLED.value: {"fg": "red"},
     TaskStatus.MERGED.value: {"fg": "blue"},
