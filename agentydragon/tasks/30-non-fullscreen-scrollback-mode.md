@@ -8,7 +8,7 @@ last_updated = "2025-06-25T01:40:09.600000"
 +++
 
 ## Summary
-Offer a non-fullscreen TUI mode that appends conversation output and defers scrolling to the terminal scrollback.
+Offer a non-fullscreen TUI mode in codex-rs that appends conversation output and defers scrolling to the terminal scrollback.
 
 ## Goal
 Provide an optional non-fullscreen mode for the chat UI where:
