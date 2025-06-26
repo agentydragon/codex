@@ -7,6 +7,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+import shlex
 
 import click
 import time
@@ -47,8 +48,10 @@ def _run_codex_exec(prompt: str, worktree: Path) -> None:
 def _launch_cmd_in_tmux(label: str, cmd: list[str], cwd: Path) -> None:
     """Launch the given command list in a detached tmux session named by label."""
     session = f"agentydragon-{label.replace('/', '-') }"
-    tmux_cmd = ["tmux", "new-session", "-d", "-s", session] + cmd
-    click.echo(f"Launching {label} in tmux session '{session}'")
+    # Wrap the agent invocation so the pane drops into a shell after the command finishes
+    wrapper = shlex.join(cmd) + "; exec $SHELL"
+    tmux_cmd = ["tmux", "new-session", "-d", "-s", session, "bash", "-lc", wrapper]
+    click.echo(f"Launching {label} in tmux session '{session}' (pane will remain open)")
     subprocess.check_call(tmux_cmd, cwd=str(cwd))
     click.echo(f"Attach with: tmux attach -t {session}")
 
