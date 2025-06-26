@@ -5,10 +5,24 @@ import subprocess
 import re
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import click
+import time
 from tasklib import load_task, repo_root, save_task, task_dir, TaskMeta, worktree_dir, TaskStatus
+import pygit2
 import shutil
+
+# Styling configuration for task statuses
+STATUS_COLORS: dict[str, dict[str, str]] = {
+    TaskStatus.NOT_STARTED.value:         {'fg': 'bright_black'},
+    TaskStatus.IN_PROGRESS.value:         {'fg': 'yellow'},
+    TaskStatus.NEEDS_INPUT.value:         {'fg': 'red'},
+    TaskStatus.NEEDS_MANUAL_REVIEW.value: {'fg': 'red'},
+    TaskStatus.DONE.value:                {'fg': 'green'},
+    TaskStatus.CANCELLED.value:           {'fg': 'red'},
+    TaskStatus.MERGED.value:              {'fg': 'blue'},
+}
 
 try:
     from tabulate import tabulate
@@ -22,19 +36,24 @@ def cli():
     pass
 
 @cli.command()
-def status():
+@click.option('--timings', is_flag=True, help='Print timing breakdown of status execution')
+def status(timings: bool):
     """Show a table of task id, title, status, dependencies, last_updated.
 
     If tabulate is installed, render as GitHub-flavored Markdown table;
     otherwise fallback to fixed-width formatting.
     """
-    # Load all task metadata, reporting load errors with file path
+    start = time.monotonic() if timings else None
+    # Load all task metadata, excluding worktrees for speed; include .done explicitly
     all_meta: dict[str, TaskMeta] = {}
     path_map: dict[str, Path] = {}
-    wt_root = worktree_dir()
-    for md in sorted(task_dir().rglob('[0-9][0-9]-*.md')):
-        # skip task template, plan files, and any worktree copies
-        if md.name in ('task-template.md',) or md.name.endswith('-plan.md') or md.is_relative_to(wt_root):
+    task_root = task_dir()
+    done_root = task_root / '.done'
+    files: list[Path] = sorted(task_root.glob('[0-9][0-9]-*.md'))
+    if done_root.exists():
+        files += sorted(done_root.glob('[0-9][0-9]-*.md'))
+    for md in files:
+        if md.name in ('task-template.md',) or md.name.endswith('-plan.md'):
             continue
         try:
             meta, _ = load_task(md)
@@ -43,17 +62,15 @@ def status():
             continue
         all_meta[meta.id] = meta
         path_map[meta.id] = md
+    if timings:
+        print(f"Loaded {len(path_map)} tasks in {time.monotonic() - start:.3f}s")
 
-    # If a worktree exists, reload the task from that workspace (including .done paths)
+    # Reload from worktree copies if present (to reflect live Status in branch)
+    if timings:
+        t0 = time.monotonic()
     repo = repo_root()
     for tid, md in list(path_map.items()):
-        wt_root_dir = wt_root / md.stem
-        # derive relative path of the task file under the repo
-        try:
-            rel = md.relative_to(repo)
-        except Exception:
-            continue
-        wt_task = wt_root_dir / rel
+        wt_task = worktree_dir() / md.stem / md.relative_to(repo)
         if wt_task.exists():
             try:
                 wt_meta, _ = load_task(wt_task)
@@ -61,6 +78,9 @@ def status():
                 path_map[tid] = wt_task
             except Exception as e:
                 print(f"Error loading {wt_task}: {e}")
+    if timings:
+        t1 = time.monotonic()
+        print(f"Reloaded worktree tasks in {t1 - t0:.3f}s")
 
     # Build dependency graph, excluding already merged tasks
     merged_ids = {tid for tid, m in all_meta.items() if m.status == 'Merged'}
@@ -106,6 +126,20 @@ def status():
         if not branches and not wt_dir.exists():
             bottom_merged_ids.add(tid)
 
+    # time deps & topo sort
+    if timings:
+        t2 = time.monotonic()
+        print(f"Deps & topo sort in {t2 - t1:.3f}s")
+    # Initialize pygit2 for batch Git operations
+    repo = pygit2.Repository(str(repo_root()))
+    integration_ref = 'refs/heads/agentydragon'
+    integration_oid = repo.references[integration_ref].target
+
+    # Build rows (branch/worktree checks)
+    worktree_time = 0.0
+    branch_time = 0.0
+    if timings:
+        t3 = time.monotonic()
     rows: list[tuple] = []
     merged_tasks: list[tuple[str, str]] = []
     root = repo_root()
@@ -114,84 +148,65 @@ def status():
         meta = all_meta[tid]
         md = path_map[tid]
         slug = md.stem
-        # branch detection
-        branches = subprocess.run(
-            ['git', 'for-each-ref', '--format=%(refname:short)',
-             f'refs/heads/agentydragon-{tid}-*'],
-            capture_output=True, text=True, cwd=root
-        ).stdout.strip().splitlines()
-        branch_exists = 'Y' if branches and branches[0].strip() else 'N'
-        merged_flag = 'N'
-        if branch_exists == 'Y':
-            b = branches[0].lstrip('*+ ').strip()
-            if subprocess.run(['git', 'merge-base', '--is-ancestor', b, 'agentydragon'], cwd=root).returncode == 0:
-                merged_flag = 'Y'
-        # worktree detection
-        wt_dir = worktree_dir() / slug
+        # Worktree cleanliness and branch status via pygit2
         wt_info = 'none'
+        wt_dir = worktree_dir() / slug
         if wt_dir.exists():
-            st = subprocess.run(['git', 'status', '--porcelain'], cwd=wt_dir,
-                                capture_output=True, text=True).stdout.strip()
-            wt_info = 'clean' if not st else 'dirty'
-
-        # skip fully merged tasks (no branch, no worktree)
-        if meta.status == 'Merged' and branch_exists == 'N' and wt_info == 'none':
+            wt_start = time.monotonic() if timings else None
+            try:
+                # Use gitstatusd-backed porcelain status for performance
+                out = subprocess.run(
+                    ['git', 'status', '--porcelain=2', '--branch', '--untracked-files=no'],
+                    cwd=wt_dir, capture_output=True, text=True
+                ).stdout
+                wt_info = 'dirty' if out.strip() else 'clean'
+            except Exception:
+                wt_info = 'dirty'
+            if timings and wt_start is not None:
+                worktree_time += time.monotonic() - wt_start
+        # Skip fully merged tasks (no branch, no worktree)
+        pattern = f'refs/heads/agentydragon-{tid}-'
+        branch_refs = [r for r in repo.references if r.startswith(pattern)]
+        if meta.status == TaskStatus.MERGED and not branch_refs and wt_info == 'none':
             merged_tasks.append((tid, meta.title))
             continue
-
-        # filter out dependencies on bottom-summary merged tasks
+        # Dependencies (excluding bottom-merged)
         deps = [d for d in deps_map.get(tid, []) if d not in bottom_merged_ids]
         deps_str = ','.join(deps)
-
-        # determine branch_info text
-        if branch_exists == 'N':
+        # Determine branch_info
+        # Branch status timing
+        if timings:
+            br_start = time.monotonic()
+        if not branch_refs:
             branch_info = 'no branch'
-        elif merged_flag == 'Y':
-            branch_info = 'merged'
+        elif wt_info == 'dirty':
+            # skip ahead/behind when worktree is dirty
+            branch_info = 'dirty-wt'
         else:
-            a_cnt, b_cnt = subprocess.check_output(
-                ['git', 'rev-list', '--left-right', '--count',
-                 f'{branches[0]}...agentydragon'], cwd=root
-            ).decode().split()
-            # compact diffstat: e.g. "56 files changed, 1265 insertions(+), 342 deletions(-)" -> "56f,1265i,342d"
-            raw = subprocess.check_output(
-                ['git', 'diff', '--shortstat', f'{branches[0]}...agentydragon'], cwd=root
-            ).decode().strip()
-            stat = (
-                raw.replace(' files changed', 'f')
-                   .replace(' file changed', 'f')
-                   .replace(' insertions(+)', 'i')
-                   .replace(' deletions(-)', 'd')
-                   .replace(', ', ',')
-            )
-            base = subprocess.check_output(
-                ['git', 'merge-base', 'agentydragon', branches[0]], cwd=root
-            ).decode().strip()
-            mtree = subprocess.check_output(
-                ['git', 'merge-tree', base, 'agentydragon', branches[0]], cwd=root
-            ).decode(errors='ignore')
-            conflict = 'conflict' if '<<<<<<<' in mtree else 'ok'
-            if a_cnt == '0' and b_cnt == '0':
-                branch_info = f'up-to-date (+{stat or 0})'
+            branch_ref = branch_refs[0]
+            branch_oid = repo.references[branch_ref].target
+            if repo.descendant_of(integration_oid, branch_oid):
+                branch_info = 'merged'
             else:
-                branch_info = f'{b_cnt} behind / {a_cnt} ahead (+{stat or 0}) {conflict}'
+                ahead, behind = repo.ahead_behind(branch_oid, integration_oid)
+                if ahead == 0 and behind == 0:
+                    branch_info = 'up-to-date'
+                else:
+                    arrows: list[str] = []
+                    if behind:
+                        arrows.append(f'{behind}↓')
+                    if ahead:
+                        arrows.append(f'{ahead}↑')
+                    branch_info = ''.join(arrows)
+        if timings:
+            branch_time += time.monotonic() - br_start
 
-        # Use the human-readable enum value and apply a color map
+        # Style status and worktree columns
         label = meta.status.value
-        status_colors = {
-            'Not started':         '\033[90m',  # dim gray
-            'In progress':         '\033[33m',  # yellow
-            'Needs input':         '\033[31m',  # red
-            'Needs manual review': '\033[31m',  # red
-            'Done':                '\033[32m',  # green
-            'Cancelled':           '\033[31m',  # red
-            'Merged':              '\033[34m',  # blue
-        }
-        color = status_colors.get(label, '')
-        stat_disp = f"{color}{label}\033[0m" if color else label
+        stat_disp = click.style(label, **STATUS_COLORS.get(label, {}))
         wt_disp = wt_info
         if wt_info == 'dirty':
-            wt_disp = f"\033[31m{wt_info}\033[0m"
+            wt_disp = click.style(wt_info, fg='red')
 
         rows.append((
             tid, meta.title, stat_disp,
@@ -199,8 +214,14 @@ def status():
             branch_info, wt_disp
         ))
 
-    headers = ['ID', 'Title', 'Status', 'Dependencies', 'Updated',
+    if timings:
+        print(f"Worktree checks: {worktree_time:.3f}s, Branch checks: {branch_time:.3f}s")
+    headers = ['ID', 'Title', 'Status', 'Depends on', 'Updated',
                'Branch Status', 'Worktree Status']
+
+    if timings:
+        t4 = time.monotonic()
+        print(f"Built table rows in {t4 - t3:.3f}s")
     if tabulate:
         print(tabulate(rows, headers=headers, tablefmt='github'))
     else:
@@ -218,21 +239,16 @@ def status():
     ready_tasks: list[tuple[str, str]] = []
     for tid in sorted_ids:
         meta = all_meta[tid]
-        if meta.status != 'Done':
+        if meta.status != TaskStatus.DONE:
             continue
-        # detect branch existence and ahead commits
-        branches = subprocess.run(
-            ['git', 'for-each-ref', '--format=%(refname:short)', f'refs/heads/agentydragon-{tid}-*'],
-            capture_output=True, text=True, cwd=repo_root()
-        ).stdout.strip().splitlines()
-        if not branches or not branches[0].strip():
+        pattern = f'refs/heads/agentydragon-{tid}-'
+        branch_refs = [r for r in repo.references if r.startswith(pattern)]
+        if not branch_refs:
             continue
-        bname = branches[0].lstrip('*+ ').strip()
-        # count commits ahead of integration branch
-        a_cnt, _b_cnt = subprocess.check_output(
-            ['git', 'rev-list', '--left-right', '--count', f'{bname}...agentydragon'], cwd=repo_root()
-        ).decode().split()
-        if int(a_cnt) > 0:
+        branch_oid = repo.references[branch_refs[0]].target
+        # ahead count relative to integration branch
+        ahead, _ = repo.ahead_behind(branch_oid, integration_oid)
+        if ahead > 0:
             ready_tasks.append((tid, meta.title))
     if ready_tasks:
         items = ' '.join(f"{tid} ({title})" for tid, title in ready_tasks)
@@ -243,6 +259,8 @@ def status():
     if unblocked:
         print(f"\n\033[1mUnblocked:\033[0m {' '.join(unblocked)}")
         print(f"\033[1mLaunch unblocked in tmux:\033[0m python agentydragon/tools/create_task_worktree.py --agent --tmux {' '.join(unblocked)}")
+    if timings:
+        print(f"Total status time: {time.monotonic() - start:.3f}s")
 
 @cli.command()
 @click.argument('task_id')
@@ -256,7 +274,13 @@ def set_status(task_id, status):
         sys.exit(1)
     path = files[0]
     meta, body = load_task(path)
-    meta.status = status
+    # Validate status string against TaskStatus enum
+    try:
+        meta.status = TaskStatus(status)
+    except ValueError:
+        valid = ', '.join([s.value for s in TaskStatus])
+        click.echo(f"Invalid status '{status}'. Valid statuses: {valid}", err=True)
+        sys.exit(1)
     meta.last_updated = datetime.utcnow()
     save_task(path, meta, body)
     # Move between tasks/ and tasks/.done according to status transitions
@@ -350,6 +374,108 @@ def launch(task_id):
         click.echo(line)
         return
     click.echo(line)
+
+@cli.command()
+def workflow():
+    """Interactive workflow: commit dirty worktrees, merge ready branches, dispose, and report task statuses."""
+    root = repo_root()
+    # gather tasks and worktree status
+    dirty = []
+    ready = []
+    done = []
+    need_input = []
+    unblocked = []
+    # dependencies map and task metas
+    all_meta: dict[str, TaskMeta] = {}
+    path_map: dict[str, Path] = {}
+    deps_map: dict[str, list[str]] = {}
+    # load task files
+    for md in sorted(task_dir().rglob('[0-9][0-9]-*.md')):
+        if md.name in ('task-template.md',) or md.name.endswith('-plan.md'):
+            continue
+        try:
+            meta, _ = load_task(md)
+        except Exception:
+            continue
+        all_meta[meta.id] = meta
+        path_map[meta.id] = md
+    # compute worktree and branch info
+    for tid, md in list(path_map.items()):
+        meta = all_meta[tid]
+        slug = md.stem
+        wt = worktree_dir() / slug
+        # worktree status
+        if wt.exists():
+            st = subprocess.run(['git', 'status', '--porcelain'], cwd=wt,
+                                capture_output=True, text=True).stdout.strip()
+            if st:
+                dirty.append(tid)
+        # ready to merge: Done with commits ahead
+        if meta.status == TaskStatus.DONE:
+            branches = subprocess.run(
+                ['git', 'for-each-ref', '--format=%(refname:short)',
+                 f'refs/heads/agentydragon-{tid}-*'], capture_output=True, text=True, cwd=root
+            ).stdout.splitlines()
+            if branches and branches[0].strip():
+                bname = branches[0].lstrip('*+ ').strip()
+                a_cnt, _ = subprocess.check_output(
+                    ['git', 'rev-list', '--left-right', '--count', f'{bname}...agentydragon'], cwd=root
+                ).decode().split()
+                if int(a_cnt) > 0:
+                    ready.append((tid, bname))
+        # tasks needing input
+        if meta.status == TaskStatus.NEEDS_INPUT:
+            need_input.append(tid)
+    # dependencies for unblocked
+    merged_ids = {tid for tid, m in all_meta.items() if m.status == TaskStatus.MERGED}
+    for tid, meta in all_meta.items():
+        deps = [d for d in re.findall(r"\d+", meta.dependencies)
+                if d in all_meta and d not in merged_ids]
+        deps_map[tid] = deps
+        if meta.status not in (TaskStatus.MERGED,) and not deps:
+            unblocked.append(tid)
+    # 1. Commit dirty worktrees
+    for tid in dirty:
+        if click.confirm(f"Run Commit agent for task {tid}?", default=True):
+            subprocess.run([sys.executable,
+                            str(repo_root()/'agentydragon'/'tools'/'launch_commit_agent.py'), tid], cwd=root)
+    # 2. Merge ready branches
+    for tid, bname in ready:
+        if click.confirm(f"Merge branch {bname} into agentydragon?", default=True):
+            click.echo(f"Merging {bname} into agentydragon")
+            subprocess.check_call(['git', 'checkout', 'agentydragon'], cwd=root)
+            subprocess.check_call(['git', 'merge', '--no-ff', bname], cwd=root)
+    # 3. Dispose merged tasks
+    for tid, _ in ready:
+        if click.confirm(f"Dispose task worktree and branch for {tid}?", default=False):
+            subprocess.run([sys.executable,
+                            __file__, 'dispose', tid], cwd=root)
+    # 4. Tasks needing input
+    if need_input:
+        click.echo(f"Tasks needing input: {' '.join(need_input)}")
+    # 4.5 Running tmux sessions and codex processes
+    try:
+        sessions = subprocess.run(['tmux', 'ls'], capture_output=True, text=True).stdout.strip()
+        if sessions:
+            click.echo("\nActive tmux sessions:")
+            click.echo(sessions)
+    except FileNotFoundError:
+        pass
+    procs = subprocess.run(['pgrep', '-fl', 'codex'], capture_output=True, text=True).stdout.strip()
+    if procs:
+        click.echo("\nRunning codex processes:")
+        click.echo(procs)
+    # 5. Offer to launch unblocked tasks
+    if unblocked:
+        click.echo(f"Unblocked tasks: {' '.join(unblocked)}")
+        if click.confirm('Launch unblocked tasks in tmux?'):
+            click.echo('Launching unblocked tasks:')
+            click.echo(f"python3 agentydragon/tools/create_task_worktree.py --agent --tmux {' '.join(unblocked)}")
+    # Print timing for print/table phase and total
+    if timings:
+        t4 = time.monotonic()
+        click.echo(f"Printed table & summaries in {t4 - t3:.3f}s")
+        click.echo(f"Total status time: {t4 - start:.3f}s")
 
 if __name__ == '__main__':
     cli()
