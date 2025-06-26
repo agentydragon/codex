@@ -52,6 +52,7 @@ def _launch_cmd_in_tmux(label: str, cmd: list[str], cwd: Path) -> None:
     wrapper = shlex.join(cmd) + "; exec $SHELL"
     tmux_cmd = ["tmux", "new-session", "-d", "-s", session, "bash", "-lc", wrapper]
     click.echo(f"Launching {label} in tmux session '{session}' (pane will remain open)")
+    click.echo(f"> tmux command: {' '.join(shlex.quote(arg) for arg in tmux_cmd)}")
     subprocess.check_call(tmux_cmd, cwd=str(cwd))
     click.echo(f"Attach with: tmux attach -t {session}")
 
