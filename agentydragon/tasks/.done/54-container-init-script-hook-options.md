@@ -1,10 +1,10 @@
 +++
 id = "54"
 title = "Container init script hook options"
-status = "done"
+status = "merged"
 freeform_status = ""
 dependencies = "43"
-last_updated = "2025-06-26T18:52:31Z"
+last_updated = "2025-06-26T18:55:28.815413"
 +++
 
 # Task 54: Container init script hook options
