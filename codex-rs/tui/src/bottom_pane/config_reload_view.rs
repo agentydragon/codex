@@ -1,10 +1,15 @@
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::KeyCode;
+use crossterm::event::KeyEvent;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::prelude::Widget;
-use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
+use ratatui::widgets::Block;
+use ratatui::widgets::BorderType;
+use ratatui::widgets::Borders;
+use ratatui::widgets::Paragraph;
 
-use super::{BottomPane, BottomPaneView};
+use super::BottomPane;
+use super::BottomPaneView;
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 
@@ -61,6 +66,7 @@ impl<'a> BottomPaneView<'a> for ConfigReloadView {
     }
 
     fn should_hide_when_task_is_done(&mut self) -> bool {
-        true
+        // Keep config reload prompt active regardless of background task state
+        false
     }
 }

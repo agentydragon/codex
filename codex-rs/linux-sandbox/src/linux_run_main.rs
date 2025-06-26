@@ -25,7 +25,7 @@ pub fn run_main() -> ! {
     };
 
     // Determine working directory inside the session.
-    let mut cwd = match std::env::current_dir() {
+    let cwd = match std::env::current_dir() {
         Ok(cwd) => cwd,
         Err(e) => panic!("failed to getcwd(): {e:?}"),
     };

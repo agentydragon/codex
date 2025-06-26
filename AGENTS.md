@@ -29,3 +29,16 @@ code in this repository.
 - Rust: rustfmt & Clippy (see `codex-rs/rustfmt.toml`); snake_case vars & funcs; PascalCase types; prefer early return; avoid `unwrap()` in prod
 - General: Do not swallow exceptions; use DRY; generate/validate ASCII art programmatically
 - Include any Cursor rules from `.cursor/rules/` or Copilot rules from `.github/copilot-instructions.md` if present
+
+## Tasks Management
+
+- All tasks are defined as individual Markdown files under `agentydragon/tasks/` using the task template.
+- When creating a new task file, you **must** populate the metadata fields at the top, including:
+  - `id`: two-digit task ID
+  - `title`: concise task title
+  - `status`: initial status (e.g., `Not started`)
+  - `dependencies`: list of task IDs that must be completed before this one (populate with `""` only if truly independent)
+  - `last_updated`: timestamp in ISO format
+- Filling out `dependencies` is your responsibility when creating or updating a task: do not leave it blank if there are ordering requirements.
+
+Please keep tasks up to date by updating their `status`, `dependencies`, and implementation sections rather than maintaining a separate list.
