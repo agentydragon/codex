@@ -777,6 +777,29 @@ def workflow():
             cmd = [sys.executable, str(script), "--agent", tid]
             _launch_cmd_in_tmux(label, cmd, root)
 
+    # Re-sort tasks for the final status report (fallback to filename order on error)
+    try:
+        temp: set[str] = set()
+        perm: set[str] = set()
+        sorted_ids: list[str] = []
+
+        def visit(n: str) -> None:
+            if n in perm:
+                return
+            if n in temp:
+                raise RuntimeError(f"Circular dependency detected at task {n}")
+            temp.add(n)
+            for m in deps_map.get(n, []):
+                visit(m)
+            temp.remove(n)
+            perm.add(n)
+            sorted_ids.append(n)
+
+        for n in all_meta:
+            visit(n)
+    except Exception:
+        sorted_ids = [m.id for m in sorted(all_meta.values(), key=lambda m: path_map[m.id].name)]
+
     # 6. Report task statuses with color
     click.echo("\nTask statuses:")
     for tid in sorted_ids:
