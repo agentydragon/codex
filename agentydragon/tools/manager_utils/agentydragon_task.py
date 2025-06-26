@@ -516,7 +516,24 @@ def workflow():
                     .split()
                 )
                 if int(a_cnt) > 0:
-                    ready.append((tid, bname))
+                    # offer only branches that merge cleanly into agentydragon
+                    try:
+                        base = subprocess.check_output(
+                            ["git", "merge-base", "agentydragon", bname], cwd=root
+                        ).decode().strip()
+                        tree = subprocess.check_output(
+                            ["git", "merge-tree", base, "agentydragon", bname], cwd=root
+                        ).decode()
+                        if "<<<<<<<" in tree:
+                            click.echo(
+                                f"Skipping branch {bname}: merge conflicts with agentydragon",
+                                err=True,
+                            )
+                        else:
+                            ready.append((tid, bname))
+                    except subprocess.CalledProcessError:
+                        # if merge-base or merge-tree fails, assume branch is mergeable
+                        ready.append((tid, bname))
         # tasks needing input
         if meta.status == TaskStatus.NEEDS_INPUT:
             need_input.append(tid)
