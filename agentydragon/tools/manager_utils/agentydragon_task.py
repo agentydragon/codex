@@ -618,10 +618,23 @@ def workflow():
                     os.environ["FIX_COMMIT_ERROR"] = prev_err
     # 2. Merge ready branches
     for tid, bname in ready:
-        if click.confirm(f"Merge branch {bname} into agentydragon?", default=True):
-            click.echo(f"Merging {bname} into agentydragon")
-            subprocess.check_call(["git", "checkout", "agentydragon"], cwd=root)
+        if not click.confirm(f"Merge branch {bname} into agentydragon?", default=True):
+            continue
+        click.echo(f"Merging {bname} into agentydragon")
+        subprocess.check_call(["git", "checkout", "agentydragon"], cwd=root)
+        try:
             subprocess.check_call(["git", "merge", "--no-ff", bname], cwd=root)
+        except subprocess.CalledProcessError:
+            click.echo(f"Merge of branch {bname} failed due to conflicts", err=True)
+            if click.confirm(f"Launch Merge-Conflict-Resolution agent for branch {bname}?", default=True):
+                prompt_path = repo_root() / "agentydragon" / "prompts" / "merge-conflict-fix.md"
+                click.echo(f"Launching Merge Conflict Resolution agent for {bname}")
+                subprocess.check_call([
+                    "codex", "--full-auto", "--cd", str(root),
+                    str(prompt_path),
+                    f"\nBranch: {bname}\nPlease resolve all merge conflicts and produce a clean merge into 'agentydragon'."
+                ])
+        # after successful merge or conflict handling, continue
     # 3. Dispose merged tasks
     for tid, _ in ready:
         if click.confirm(f"Dispose task worktree and branch for {tid}?", default=False):
