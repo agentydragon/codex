@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import re
+import shlex
 from pathlib import Path
 
 import click
@@ -53,6 +54,12 @@ def resolve_slug(input_id: str) -> str:
     "Attaches to an existing session if already running.",
 )
 @click.option(
+    "--hold",
+    "hold_shell",
+    is_flag=True,
+    help="Keep a shell open in each tmux pane after the agent run finishes.",
+)
+@click.option(
     "-i",
     "--interactive",
     is_flag=True,
@@ -90,24 +97,28 @@ def main(
     if tmux_mode:
         agent = True
         session = "agentydragon_" + "_".join(task_inputs)
-        # If a tmux session already exists, skip setup and attach
+        # Attach if session already exists
         if subprocess.call(["tmux", "has-session", "-t", session]) == 0:
             click.echo(f"Session {session} already exists; attaching")
             run(["tmux", "attach", "-t", session])
             return
-        # Create a new session and windows for each task
+        # Launch panes for each task; optionally hold a shell after agent run
         for idx, inp in enumerate(task_inputs):
             slug = resolve_slug(inp)
-            cmd = [sys.executable, "-u", __file__]
+            base_cmd = [sys.executable, "-u", __file__]
             if rebase_mode:
-                cmd.append("--rebase")
+                base_cmd.append("--rebase")
             elif agent:
-                cmd.append("--agent")
-            cmd.append(slug)
-            if idx == 0:
-                run(["tmux", "new-session", "-d", "-s", session] + cmd)
+                base_cmd.append("--agent")
+            base_cmd.append(slug)
+            if hold_shell:
+                pane_cmd = ["bash", "-lc", shlex.join(base_cmd) + "; exec $SHELL"]
             else:
-                run(["tmux", "new-window", "-t", session] + cmd)
+                pane_cmd = base_cmd
+            if idx == 0:
+                run(["tmux", "new-session", "-d", "-s", session] + pane_cmd)
+            else:
+                run(["tmux", "new-window", "-t", session] + pane_cmd)
         run(["tmux", "attach", "-t", session])
         return
 
