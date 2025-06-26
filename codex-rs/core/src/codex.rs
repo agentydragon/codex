@@ -1879,7 +1879,9 @@ fn get_writable_roots(cwd: &Path) -> Vec<std::path::PathBuf> {
     if cfg!(target_os = "macos") {
         // On macOS, $TMPDIR is private to the user.
         writable_roots.push(std::env::temp_dir());
+    }
 
+    if cfg!(any(target_os = "macos", target_os = "linux")) {
         // Allow pyenv to update its shims directory. Without this, any tool
         // that happens to be managed by `pyenv` will fail with an error like:
         //
