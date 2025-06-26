@@ -28,15 +28,12 @@
    3. Read the commit message and run `git commit -m "$MSG"`.
 
 ## 4. Merge Conflict Resolution Agent
-- **Scope**: When merging completed task branches into the integration branch (`agentydragon`).
+- **Scope**: Runs inside the task’s worktree when preparing a completed task branch for integration.
 - **Actions**:
-  1. If a branch merge into `agentydragon` fails due to conflicts, launch the Merge Conflict Resolution agent with the conflict context.
-  2. Agent checks out the failing branch and runs:
-     ```bash
-     git merge --no-ff agentydragon
-     ```
-  3. Resolve conflicts manually, stage the resolutions, and commit the merge-resolution commit.
-  4. Stop after creating the clean merge commit; do not push or modify unrelated files.
+  1. If merging `agentydragon-<ID>-<slug>` into `agentydragon` fails due to conflicts, launch the Merge Conflict Resolution agent in that task’s worktree.
+  2. Agent reads the `prompts/merge-conflict-fix.md` template and the additional branch-specific instructions.
+  3. Agent resolves all merge conflicts so that the branch can be cleanly merged into `agentydragon`, stages the resolutions, and commits the merge-resolution commit.
+  4. Stop after creating the clean merge-resolution commit; do not modify unrelated files or push changes.
 
 ## 5. Status & Launch
  - Use `agentydragon_task.py status` to view tasks (including those in `.done/`).
