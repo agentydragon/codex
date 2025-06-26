@@ -10,7 +10,13 @@ from pathlib import Path
 
 import click
 
-from common import repo_root, tasks_dir, worktrees_dir, resolve_slug
+from common import (
+    repo_root,
+    tasks_dir,
+    worktrees_dir,
+    resolve_slug,
+    sandbox_flags_for_worktree,
+)
 
 
 def run(cmd, cwd=None):
@@ -71,7 +77,9 @@ def resolve_slug(input_id: str) -> str:
     help="Launch Rebase agent to update the branch onto the latest integration branch; implies --agent and --interactive.",
 )
 @click.argument("task_inputs", nargs=-1, required=True)
-def main(agent, tmux_mode, interactive, shell_mode, skip_presubmit, rebase_mode, task_inputs):
+def main(
+    agent, tmux_mode, interactive, shell_mode, skip_presubmit, rebase_mode, task_inputs
+):
     """Create/reuse a task worktree and optionally launch a Dev or Rebase agent or tmux session."""
     # shell mode implies interactive (skip exec within the worktree)
     if shell_mode:
@@ -191,10 +199,8 @@ def main(agent, tmux_mode, interactive, shell_mode, skip_presubmit, rebase_mode,
     else:
         cmd = ["codex", "--full-auto", "exec"] + cd_arg
 
-    # If in rebase mode, grant write permission on .git so the agent can run git rebase
-    if rebase_mode:
-        gitdir = wt_path / ".git"
-        cmd += ["-s", f"disk-write-folder={gitdir}"]
+    # Grant sandbox access so Codex can read/write both worktree and its Git metadata
+    cmd += sandbox_flags_for_worktree(wt_path)
 
     # Assemble base prompt
     prompt_name = "rebase.md" if rebase_mode else "developer.md"
@@ -210,7 +216,7 @@ def main(agent, tmux_mode, interactive, shell_mode, skip_presubmit, rebase_mode,
         m = re.search(r'title\s*=\s*"([^"]+)"', text)
         title = m.group(1) if m else slug
         context = (
-            f'You are working on task {slug}: "{title}". ' \
+            f'You are working on task {slug}: "{title}". '
             f"See the full specification in {md_path}."
         )
     run(cmd + [base_prompt + "\n\n" + context])

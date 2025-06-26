@@ -30,13 +30,19 @@ import shutil
 sys.path.insert(0, str(repo_root() / "agentydragon" / "tools"))
 from launch_commit_agent import main as commit_cmd
 from create_task_worktree import main as create_task_worktree_cmd
+from common import sandbox_flags_for_worktree
+
+
 # Shared helper to invoke Codex exec with a prompt in a worktree
 def _run_codex_exec(prompt: str, worktree: Path) -> None:
     """Run a non-interactive Codex session (exec) with the given prompt in worktree."""
     cmd = ["codex", "--cd", str(worktree), "--full-auto", "exec"]
+    # Grant sandbox access so Codex can read/write both worktree and its Git metadata
+    cmd += sandbox_flags_for_worktree(worktree)
     click.echo(f"Running Codex exec: {' '.join(cmd)}")
     # Pass the prompt as CLI argument rather than via stdin
     subprocess.check_call(cmd + [prompt])
+
 
 def _launch_cmd_in_tmux(label: str, cmd: list[str], cwd: Path) -> None:
     """Launch the given command list in a detached tmux session named by label."""
@@ -45,6 +51,8 @@ def _launch_cmd_in_tmux(label: str, cmd: list[str], cwd: Path) -> None:
     click.echo(f"Launching {label} in tmux session '{session}'")
     subprocess.check_call(tmux_cmd, cwd=str(cwd))
     click.echo(f"Attach with: tmux attach -t {session}")
+
+
 # Styling configuration for task statuses
 STATUS_COLORS: dict[str, dict[str, str]] = {
     TaskStatus.NOT_STARTED.value: {"fg": "reset"},
@@ -574,17 +582,20 @@ def workflow():
             script = repo_root() / "agentydragon" / "tools" / "launch_commit_agent.py"
             for tid in selected:
                 click.echo(f"  - {tid}")
-                p = subprocess.Popen([
-                    sys.executable,
-                    str(script),
-                    tid
-                ], cwd=str(repo_root()), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                p = subprocess.Popen(
+                    [sys.executable, str(script), tid],
+                    cwd=str(repo_root()),
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
                 procs.append((tid, p))
             # Collect results
             for tid, p in procs:
                 ret = p.wait()
                 if ret != 0:
-                    click.echo(f"Commit agent for {tid} exited with status {ret}", err=True)
+                    click.echo(
+                        f"Commit agent for {tid} exited with status {ret}", err=True
+                    )
                     commit_failures.append((tid, f"exit {ret}"))
 
     # 1a. Fixer phase: if any commit agents failed, offer a full-auto Dev agent to fix errors using multi-select
@@ -608,7 +619,9 @@ def workflow():
                 prefix = "[*]" if tid in fixes else "  *"
                 click.echo(f" {prefix} {tid}: {err}")
             click.echo("")
-        if fixes and click.confirm("Launch full-auto Dev agent for selected tasks?", default=True):
+        if fixes and click.confirm(
+            "Launch full-auto Dev agent for selected tasks?", default=True
+        ):
             # Launch Dev fix agents in background tmux sessions
             script = repo_root() / "agentydragon" / "tools" / "create_task_worktree.py"
             for tid, err in commit_failures:
@@ -625,19 +638,30 @@ def workflow():
                 ["git", "merge-base", "agentydragon", bname], cwd=root, text=True
             ).strip()
             tree = subprocess.check_output(
-                ["git", "merge-tree", base, "agentydragon", bname], cwd=root,
-                text=True, errors="ignore"
+                ["git", "merge-tree", base, "agentydragon", bname],
+                cwd=root,
+                text=True,
+                errors="ignore",
             )
         except subprocess.CalledProcessError:
             tree = ""
 
         if "<<<<<<<" in tree:
-            click.echo(f"Branch {bname} has merge conflicts with agentydragon", err=True)
-            if click.confirm(f"Launch Merge-Conflict-Resolution agent for branch {bname}?", default=True):
+            click.echo(
+                f"Branch {bname} has merge conflicts with agentydragon", err=True
+            )
+            if click.confirm(
+                f"Launch Merge-Conflict-Resolution agent for branch {bname}?",
+                default=True,
+            ):
                 # Invoke merge-conflict-resolution agent in the task worktree
                 task_wt = worktree_dir() / path_map[tid].stem
-                prompt_path = repo_root() / "agentydragon" / "prompts" / "merge-conflict-fix.md"
-                click.echo(f"Launching Merge Conflict Resolution agent for {bname} (cwd={task_wt})")
+                prompt_path = (
+                    repo_root() / "agentydragon" / "prompts" / "merge-conflict-fix.md"
+                )
+                click.echo(
+                    f"Launching Merge Conflict Resolution agent for {bname} (cwd={task_wt})"
+                )
                 with open(prompt_path, "r") as f:
                     prompt = f.read()
                 prompt += (
@@ -649,18 +673,23 @@ def workflow():
                 # Re-run merge-tree to verify conflicts resolved
                 try:
                     base = subprocess.check_output(
-                        ["git", "merge-base", "agentydragon", bname], cwd=root,
-                        text=True
+                        ["git", "merge-base", "agentydragon", bname],
+                        cwd=root,
+                        text=True,
                     ).strip()
                     tree = subprocess.check_output(
-                        ["git", "merge-tree", base, "agentydragon", bname], cwd=root,
-                        text=True, errors="ignore"
+                        ["git", "merge-tree", base, "agentydragon", bname],
+                        cwd=root,
+                        text=True,
+                        errors="ignore",
                     )
                 except subprocess.CalledProcessError:
                     tree = ""
 
                 if "<<<<<<<" in tree:
-                    click.echo(f"Branch {bname} still has merge conflicts, skipping", err=True)
+                    click.echo(
+                        f"Branch {bname} still has merge conflicts, skipping", err=True
+                    )
                     continue
             else:
                 click.echo(f"Skipping merge for {bname}", err=True)
@@ -681,15 +710,16 @@ def workflow():
         dirty_wt = False
         if wt.exists():
             st = subprocess.run(
-                ["git", "status", "--porcelain"], cwd=wt,
-                capture_output=True, text=True
+                ["git", "status", "--porcelain"], cwd=wt, capture_output=True, text=True
             ).stdout.strip()
             dirty_wt = bool(st)
         # Offer dispose when (open & no worktree) or (merged & clean worktree)
         if (meta.status.lower() == "open" and not wt.exists()) or (
             meta.status.lower() == "merged" and wt.exists() and not dirty_wt
         ):
-            if click.confirm(f"Dispose task worktree and branch for {tid}?", default=False):
+            if click.confirm(
+                f"Dispose task worktree and branch for {tid}?", default=False
+            ):
                 subprocess.run([sys.executable, __file__, "dispose", tid], cwd=root)
     # 4. Tasks needing input
     if need_input:

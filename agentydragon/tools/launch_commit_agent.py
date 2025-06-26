@@ -9,7 +9,13 @@ from pathlib import Path
 
 import click
 
-from common import repo_root, tasks_dir, worktrees_dir, resolve_slug
+from common import (
+    repo_root,
+    tasks_dir,
+    worktrees_dir,
+    resolve_slug,
+    sandbox_flags_for_worktree,
+)
 
 
 @click.command()
@@ -104,9 +110,14 @@ def main(task_inputs):
                 err=True,
             )
             sys.exit(0)
-        # Use codex's built-in --cd flag instead of changing working dir
+        # Use codex's built-in --cd flag and grant sandbox access to the worktree
         cd_arg = ["--cd", str(wt)]
-        cmd = ["codex"] + cd_arg + ["--full-auto", "exec", "--output-last-message", str(msg_file)]
+        cmd = (
+            ["codex"]
+            + cd_arg
+            + ["--full-auto", "exec", "--output-last-message", str(msg_file)]
+        )
+        cmd += sandbox_flags_for_worktree(wt)
         click.echo(f"Running commit agent: {' '.join(cmd)}")
         prompt_content = prompt_file.read_text(encoding="utf-8")
         task_content = task_file.read_text(encoding="utf-8")

@@ -8,18 +8,18 @@ from pathlib import Path
 
 def repo_root() -> Path:
     """Return the Git repository root directory."""
-    out = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'])
+    out = subprocess.check_output(["git", "rev-parse", "--show-toplevel"])
     return Path(out.decode().strip())
 
 
 def tasks_dir() -> Path:
     """Path to the agentydragon/tasks directory."""
-    return repo_root() / 'agentydragon' / 'tasks'
+    return repo_root() / "agentydragon" / "tasks"
 
 
 def worktrees_dir() -> Path:
     """Path to the agentydragon/tasks/.worktrees directory."""
-    return tasks_dir() / '.worktrees'
+    return tasks_dir() / ".worktrees"
 
 
 def resolve_slug(input_id: str) -> str:
@@ -28,5 +28,27 @@ def resolve_slug(input_id: str) -> str:
         matches = list(tasks_dir().glob(f"{input_id}-*.md"))
         if len(matches) == 1:
             return matches[0].stem
-        raise ValueError(f"Expected one task file for ID {input_id}, found {len(matches)}")
+        raise ValueError(
+            f"Expected one task file for ID {input_id}, found {len(matches)}"
+        )
     return input_id
+
+
+def sandbox_flags_for_worktree(worktree: Path) -> list[str]:
+    """
+    Return sandbox-exec flags granting read/write access to a worktree and its Git data.
+
+    git worktrees store metadata outside the worktree directory (via a .git "gitdir" file),
+    so we must explicitly whitelist both the working tree and its .git metadata folder.
+    """
+    gitdir = worktree / ".git"
+    return [
+        "-s",
+        f"disk-read-folder={worktree}",
+        "-s",
+        f"disk-read-folder={gitdir}",
+        "-s",
+        f"disk-write-folder={worktree}",
+        "-s",
+        f"disk-write-folder={gitdir}",
+    ]
