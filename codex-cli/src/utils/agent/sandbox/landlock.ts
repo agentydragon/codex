@@ -15,9 +15,16 @@ import { fileURLToPath } from "url";
  * Without this root, it can cause:
  * pyenv: cannot rehash: $HOME/.pyenv/shims isn't writable
  */
+/**
+ * Common writable roots that should always be allowed for write operations,
+ * even if not explicitly provided by the user.
+ * Without these roots, pyenv rehash may fail if shims isn't writable
+ */
 function getCommonRoots() {
+  const home = process.env["HOME"];
   return [
-    `${process.env["HOME"]}/.pyenv`,
+    `${home}/.pyenv`,
+    `${home}/.pyenv/shims`,
   ];
 }
 

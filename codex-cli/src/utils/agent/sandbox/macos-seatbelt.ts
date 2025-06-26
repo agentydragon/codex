@@ -6,10 +6,11 @@ import { exec } from "./raw-exec.js";
 import { log } from "../../logger/log.js";
 
 function getCommonRoots() {
+  const home = process.env["HOME"];
   return [
-    // Without this root, it'll cause:
-    // pyenv: cannot rehash: $HOME/.pyenv/shims isn't writable
-    `${process.env["HOME"]}/.pyenv`,
+    // Without these roots, pyenv rehash may fail if shims isn't writable
+    `${home}/.pyenv`,
+    `${home}/.pyenv/shims`,
   ];
 }
 

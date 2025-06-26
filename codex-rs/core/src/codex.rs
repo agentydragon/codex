@@ -1893,8 +1893,10 @@ fn get_writable_roots(cwd: &Path) -> Vec<std::path::PathBuf> {
         // writing to the user's local `pyenv` directory is safe because it
         // is already user‑writable and scoped to the current user account.
         if let Ok(home_dir) = std::env::var("HOME") {
-            let pyenv_dir = PathBuf::from(home_dir).join(".pyenv");
-            writable_roots.push(pyenv_dir);
+            let pyenv_root = PathBuf::from(&home_dir).join(".pyenv");
+            // Allow pyenv to update its shims directory, which may write to ~/.pyenv/shims
+            writable_roots.push(pyenv_root.clone());
+            writable_roots.push(pyenv_root.join("shims"));
         }
     }
 
