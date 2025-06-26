@@ -567,6 +567,12 @@ More broadly we welcome contributions - whether you are opening your very first 
 - We use **Vitest** for unit tests, **ESLint** + **Prettier** for style, and **TypeScript** for type-checking.
 - Before pushing, run the full test/type/lint suite:
 
+#### Interactive orchestrator workflow
+
+Use `agentydragon_task.py workflow` to interactively launch commit agents, fixer agents,
+and Developer agents for unblocked tasks in a single session. See
+`agentydragon/WORKFLOW.md` for an illustrated example of the +xx/–xx/ok multi-select UI.
+
 ### Git hooks with Husky
 
 This project uses [Husky](https://typicode.github.io/husky/) to enforce code quality checks:

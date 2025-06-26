@@ -531,44 +531,82 @@ def workflow():
         deps_map[tid] = deps
         if meta.status not in (TaskStatus.MERGED,) and not deps:
             unblocked.append(tid)
-    # 1. Commit agent: batch commit tasks with uncommitted changes
+    # 1. Commit agent: batch commit tasks with uncommitted changes using multi-select
     commit_failures: list[tuple[str, str]] = []
-    for tid in dirty:
-        if not click.confirm(f"Run Commit agent for task {tid}?", default=True):
-            continue
-        cmd = [
-            sys.executable,
-            str(repo_root() / "agentydragon" / "tools" / "launch_commit_agent.py"),
-            tid,
-        ]
-        res = subprocess.run(cmd, cwd=root, capture_output=True, text=True)
-        if res.returncode != 0:
-            err = (res.stderr or res.stdout).strip()
-            click.echo(f"Commit agent failed for {tid}: {err}", err=True)
-            commit_failures.append((tid, err))
+    if dirty:
+        click.echo("Tasks with dirty branch:")
+        for tid in dirty:
+            click.echo(f"  *  {tid} - {all_meta[tid].title}")
+        click.echo("\n+xx = add task, -xx = remove task, ok = run")
+        selected: set[str] = set()
+        while True:
+            choice = click.prompt("> ", default="", show_default=False)
+            if choice.strip() == "ok":
+                break
+            for token in choice.split():
+                if token.startswith("+") and token[1:] in dirty:
+                    selected.add(token[1:])
+                elif token.startswith("-"):
+                    selected.discard(token[1:])
+            click.echo("")
+            for tid in dirty:
+                prefix = "[*]" if tid in selected else "  *"
+                click.echo(f" {prefix} {tid} - {all_meta[tid].title}")
+            click.echo("")
+        if selected:
+            procs: list[tuple[str, subprocess.Popen]] = []
+            script = repo_root() / "agentydragon" / "tools" / "launch_commit_agent.py"
+            for tid in selected:
+                click.echo(f"Launching Commit agent for task {tid}")
+                p = subprocess.Popen([
+                    sys.executable,
+                    str(script),
+                    tid,
+                ], cwd=root)
+                procs.append((tid, p))
+            for tid, p in procs:
+                ret = p.wait()
+                if ret != 0:
+                    click.echo(f"Commit agent failed for {tid} (exit {ret})", err=True)
+                    commit_failures.append((tid, f"exit {ret}"))
 
-    # 1a. Fixer phase: if any commit agents failed, offer a full-auto Dev agent to fix errors
+    # 1a. Fixer phase: if any commit agents failed, offer a full-auto Dev agent to fix errors using multi-select
     if commit_failures:
         click.echo("\nTasks needing auto-fix:")
-        for i, (tid, err) in enumerate(commit_failures, start=1):
-            click.echo(f"[{i}] {tid}: {err.splitlines()[0]}")
-        if click.confirm(
-            "Launch full-auto Dev agent to fix these tasks?", default=True
-        ):
+        for tid, err in commit_failures:
+            click.echo(f"  *  {tid}: {err}")
+        click.echo("\n+xx = add task, -xx = remove task, ok = run")
+        fixes: set[str] = set()
+        while True:
+            choice = click.prompt("> ", default="", show_default=False)
+            if choice.strip() == "ok":
+                break
+            for token in choice.split():
+                if token.startswith("+"):
+                    fixes.add(token[1:])
+                elif token.startswith("-"):
+                    fixes.discard(token[1:])
+            click.echo("")
             for tid, err in commit_failures:
-                click.echo(f"Launching Dev fix agent for task {tid}")
-                prev = os.environ.get("FIX_COMMIT_ERROR")
-                os.environ["FIX_COMMIT_ERROR"] = err
-                try:
-                    create_task_worktree_cmd(
-                        args=["--agent", tid], standalone_mode=False
-                    )
-                except SystemExit:
-                    pass
-                if prev is None:
-                    del os.environ["FIX_COMMIT_ERROR"]
-                else:
-                    os.environ["FIX_COMMIT_ERROR"] = prev
+                prefix = "[*]" if tid in fixes else "  *"
+                click.echo(f" {prefix} {tid}: {err}")
+            click.echo("")
+        if fixes and click.confirm("Launch full-auto Dev agent for selected tasks?", default=True):
+            for tid, err in commit_failures:
+                if tid in fixes:
+                    click.echo(f"Launching Dev fix agent for task {tid}")
+                    prev = os.environ.get("FIX_COMMIT_ERROR")
+                    os.environ["FIX_COMMIT_ERROR"] = err
+                    try:
+                        create_task_worktree_cmd(
+                            args=["--agent", tid], standalone_mode=False
+                        )
+                    except SystemExit:
+                        pass
+                    if prev is None:
+                        del os.environ["FIX_COMMIT_ERROR"]
+                    else:
+                        os.environ["FIX_COMMIT_ERROR"] = prev
     # 2. Merge ready branches
     for tid, bname in ready:
         if click.confirm(f"Merge branch {bname} into agentydragon?", default=True):
@@ -598,14 +636,34 @@ def workflow():
     if procs:
         click.echo("\nRunning codex processes:")
         click.echo(procs)
-    # 5. Offer to launch unblocked tasks
+    # 5. Developer agent: batch launch unblocked tasks via interactive multi-select
     if unblocked:
-        click.echo(f"Unblocked tasks: {' '.join(unblocked)}")
-        if click.confirm("Launch unblocked tasks in tmux?"):
-            click.echo("Launching unblocked tasks:")
-            click.echo(
-                f"python3 agentydragon/tools/create_task_worktree.py --agent --tmux {' '.join(unblocked)}"
-            )
+        click.echo("Unblocked tasks:")
+        for tid in unblocked:
+            click.echo(f"  *  {tid} - {all_meta[tid].title}")
+        click.echo("\n+xx = add task, -xx = remove task, ok = run")
+        selected_unblocked: set[str] = set()
+        while True:
+            choice = click.prompt("> ", default="", show_default=False)
+            if choice.strip() == "ok":
+                break
+            for token in choice.split():
+                if token.startswith("+") and token[1:] in unblocked:
+                    selected_unblocked.add(token[1:])
+                elif token.startswith("-"):
+                    selected_unblocked.discard(token[1:])
+            click.echo("")
+            for tid in unblocked:
+                prefix = "[*]" if tid in selected_unblocked else "  *"
+                click.echo(f" {prefix} {tid} - {all_meta[tid].title}")
+            click.echo("")
+        if selected_unblocked:
+            click.echo("Launching Developer agents for selected unblocked tasks:")
+            for tid in selected_unblocked:
+                click.echo(f"  - {tid}")
+                create_task_worktree_cmd(
+                    args=["--agent", "--tmux", tid], standalone_mode=False
+                )
     # Print timing for print/table phase and total
     # timings not supported for workflow
 
