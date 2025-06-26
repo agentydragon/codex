@@ -35,7 +35,31 @@ which go into `README.md`.
      c. If conflicts are detected, launch the Merge Conflict Resolution Agent (see below), then re-run the dry-run; if still conflicted, skip merging.
   5. Optionally remove merged branches and worktrees for disposed tasks.
 
-## 4. Merge Conflict Resolution Agent
+## 4. Rebase Branch Agent
+
+- **Scope**: Runs inside the task’s worktree with explicit Git-write permission on `.git`.
+- **Actions**:
+  1. Launch the Rebase Branch agent (via `create_task_worktree.py --rebase`), passing `-s disk-write-folder=<worktree>/.git`.
+2. Agent runs these commands to preserve and reapply uncommitted changes:
+   ```bash
+   git diff > changes.patch
+   git rebase agentydragon
+   git apply changes.patch
+   ```
+   If the rebase or patch application fails, abort and restore branch state:
+   ```bash
+   git rebase --abort
+   git reset --hard
+   exit 1
+   ```
+3. Agent edits files to resolve remaining conflicts; remove conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`).
+4. Agent runs pre-commit checks and applies autofixes so that all hooks pass:
+   ```bash
+   pre-commit run --all-files
+   ```
+5. Agent leaves the worktree dirty (conflicts resolved, hooks passed)—do **not** stage or commit; the orchestrator will finish the rebase.
+
+## 5. Merge Conflict Resolution Agent
 - **Scope**: Runs inside the task’s worktree when preparing a completed task branch for integration.
 - **Actions**:
   1. If merging `agentydragon-<ID>-<slug>` into `agentydragon` fails due to conflicts, launch the Merge Conflict Resolution agent in that task’s worktree.

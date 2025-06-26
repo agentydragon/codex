@@ -191,6 +191,11 @@ def main(agent, tmux_mode, interactive, shell_mode, skip_presubmit, rebase_mode,
     else:
         cmd = ["codex", "--full-auto", "exec"] + cd_arg
 
+    # If in rebase mode, grant write permission on .git so the agent can run git rebase
+    if rebase_mode:
+        gitdir = wt_path / ".git"
+        cmd += ["-s", f"disk-write-folder={gitdir}"]
+
     # Assemble base prompt
     prompt_name = "rebase.md" if rebase_mode else "developer.md"
     base_prompt = (repo_root() / "agentydragon" / "prompts" / prompt_name).read_text(
