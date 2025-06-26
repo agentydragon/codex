@@ -373,6 +373,7 @@ impl HistoryCell {
 
         let mut lines: Vec<Line<'static>> = Vec::new();
 
+        // TODO(codex): factor out time fmt method
         // Render each line of the completed command: green ✓ / red ✗ + timing, padded, then multi-line command.
         let timing = if duration < Duration::from_secs(5) {
             format!("{}ms", duration.as_millis())
@@ -380,17 +381,25 @@ impl HistoryCell {
             let secs = duration.as_secs();
             format!("{}:{:02}", secs / 60, secs % 60)
         };
+        // TODO(codex): render instead as:
+        // 123ms   ✓ /bin/command/...
+        // 123ms 5 ✗ /bin/command/...
+        //
+        // TODO(codex): show running state for command as:
+        // 123ms   O /bin/command/...
+        //         ^-- spinning spinner
         let ann = if exit_code == 0 {
             format!("✓ {}", timing)
         } else {
-            format!("✗ exit {} {}", exit_code, timing)
+            format!("✗ {} {}", exit_code, timing)
         };
-        let pad = format!("{:<8}", ann);
-        let ann_span = if exit_code == 0 {
-            Span::styled(pad.clone(), Style::default().fg(Color::Green))
+        let pad = format!("{:<9}", ann);
+        let ann_color = if exit_code == 0 {
+            Color::Green
         } else {
-            Span::styled(pad.clone(), Style::default().fg(Color::Red))
+            Color::Red
         };
+        let ann_span = Span::styled(pad.clone(), Style::default().fg(ann_color));
         for (i, cmd_line) in command.split('\n').enumerate() {
             if i == 0 {
                 lines.push(Line::from(vec![
@@ -399,6 +408,12 @@ impl HistoryCell {
                     cmd_line.to_string().into(),
                 ]));
             } else {
+                // TODO(codex): 2 is magic constant
+                // TODO(codex): make behavior configurable -
+                //   (a)  .... $ /bin/long/commnad/...
+                //        continues/on/column/1
+                //   (b)  .... $ /bin/long/commnad/...
+                //               padded/to/align
                 let indent = " ".repeat(pad.len() + 2);
                 lines.push(Line::from(indent + cmd_line));
             }
