@@ -75,15 +75,7 @@ Tasks live under `agentydragon/tasks/` as individual Markdown files. Please upda
 -`rsync -a --delete --exclude=.git* --exclude=.worktrees/`. This yields near-instant setup on
 -reflink-capable filesystems while preserving untracked files.
   -  With `--agent`, after setting up a new worktree it runs presubmit pre-commit checks (aborting with a clear message on failure unless `--skip-presubmit` is passed), then launches the Developer Codex agent (using `prompts/developer.md` and the task file).
-  -  After the Developer agent exits, if the task’s **Status** is set to `Done`, it automatically runs the Commit agent helper to stage fixes and commit the work.
-**Commit agent helper**: in `agentydragon/tasks/`, run:
-
-```sh
-# Generate and apply commit(s) for completed task(s) in their worktrees:
-agentydragon/tools/launch_commit_agent.py <task-slug|NN> [<task-slug|NN>...]
-```
-
-After the Developer agent finishes and updates the task file, the Commit agent will write the commit message to a temporary file and then commit using that file (`git commit -F`). An external orchestrator can then stage files and run pre-commit hooks as usual. You do not need to run `git commit` manually.
+  -  After the Developer agent exits, if the task’s **Status** is set to `Done`, it automatically stages changes and commits the work via the integrated Commit agent.
 
 ---
 
