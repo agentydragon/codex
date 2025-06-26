@@ -159,9 +159,11 @@ def main(
         # Hydrate via CoW copy if possible, excluding the .worktrees directory; fallback to rsync
         cp_cmd = None
         if shutil.which("cp") and sys.platform != "darwin":
-            # Copy all top-level entries except .worktrees to avoid recursion
+            # Copy all top-level entries except .worktrees and .git to avoid recursion and copying VCS metadata
             base = Path(src)
-            entries = [str(base / p.name) for p in base.iterdir() if p.name != ".worktrees"]
+            entries = [str(base / p.name)
+                       for p in base.iterdir()
+                       if p.name not in (".worktrees", ".git")]
             cp_cmd = ["cp", "--archive", "--reflink=auto"] + entries + [dst]
             try:
                 run(cp_cmd)
