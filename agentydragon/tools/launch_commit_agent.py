@@ -113,10 +113,10 @@ def main(task_inputs):
         subprocess.check_call(
             cmd + [prompt_content + "\n\n" + task_content], stdout=subprocess.DEVNULL
         )
-        # Stage all changes, including new files (not just modifications)
-        subprocess.check_call(["git", "add", "-A"])
+        # Stage all changes in this worktree, including new files (not just modifications)
+        subprocess.check_call(["git", "add", "-A"], cwd=str(wt))
         try:
-            subprocess.check_call(["git", "commit", "-F", str(msg_file)])
+            subprocess.check_call(["git", "commit", "-F", str(msg_file)], cwd=str(wt))
         except subprocess.CalledProcessError as e:
             click.echo(
                 f"Error running command: {' '.join(e.cmd)} returned {e.returncode}",
