@@ -5,3 +5,7 @@
 
 # Value of CARGO_TARGET_DIR when using .devcontainer/devcontainer.json.
 /target-arm64/
+
+# Ignore debug logs generated during development
+/debug.log
+/debug-sequencing.log

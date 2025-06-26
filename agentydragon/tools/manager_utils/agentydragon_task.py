@@ -629,11 +629,14 @@ def workflow():
             if click.confirm(f"Launch Merge-Conflict-Resolution agent for branch {bname}?", default=True):
                 prompt_path = repo_root() / "agentydragon" / "prompts" / "merge-conflict-fix.md"
                 click.echo(f"Launching Merge Conflict Resolution agent for {bname}")
+                # Read the merge-conflict prompt template and append branch-specific instructions,
+                # then feed to codex exec non-interactively via stdin.
+                with open(prompt_path, 'r') as f:
+                    prompt = f.read()
+                prompt += f"\nBranch: {bname}\nPlease resolve all merge conflicts and produce a clean merge into 'agentydragon'."
                 subprocess.check_call([
-                    "codex", "--full-auto", "--cd", str(root),
-                    str(prompt_path),
-                    f"\nBranch: {bname}\nPlease resolve all merge conflicts and produce a clean merge into 'agentydragon'."
-                ])
+                    "codex", "exec", "--full-auto", "--cd", str(root)
+                ], input=prompt, text=True)
         # after successful merge or conflict handling, continue
     # 3. Dispose merged tasks
     for tid, _ in ready:
