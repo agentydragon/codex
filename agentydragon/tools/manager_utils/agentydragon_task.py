@@ -559,7 +559,7 @@ def workflow():
         click.echo("Tasks with dirty branch:")
         for tid in dirty:
             click.echo(f"  *  {tid} - {all_meta[tid].title}")
-        click.echo("\n+xx = add task, -xx = remove task, ok = run")
+        click.echo("\n[Commit agent] +xx = add task, -xx = remove task, ok = run")
         selected: set[str] = set()
         while True:
             choice = click.prompt("> ", default="", show_default=False)
@@ -603,7 +603,7 @@ def workflow():
         click.echo("\nTasks needing auto-fix:")
         for tid, err in commit_failures:
             click.echo(f"  *  {tid}: {err}")
-        click.echo("\n+xx = add task, -xx = remove task, ok = run")
+        click.echo("\n[Auto-fix agent] +xx = add task, -xx = remove task, ok = run")
         fixes: set[str] = set()
         while True:
             choice = click.prompt("> ", default="", show_default=False)
