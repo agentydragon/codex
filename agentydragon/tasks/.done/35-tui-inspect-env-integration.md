@@ -1,10 +1,10 @@
 +++
 id = "35"
 title = "TUI Integration for Inspect-Env Command"
-status = "open"
+status = "merged"
 freeform_status = ""
 dependencies = "10"
-last_updated = "2025-06-26T20:44:11.839283"
+last_updated = "2025-06-26T21:56:12.259124"
 +++
 
 > *This task is specific to codex-rs.*
