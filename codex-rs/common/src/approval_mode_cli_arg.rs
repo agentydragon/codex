@@ -49,10 +49,11 @@ pub struct SandboxPermissionOption {
     ///       -s disk-write-platform-global-temp-folder
     /// ```
     ///
-    /// Note disk-write-folder takes a value:
+    /// Note disk-write-folder and disk-read-folder take a path value:
     ///
     /// ```shell
-    ///     -s disk-write-folder=$HOME/.pyenv/shims
+    ///     -s disk-read-folder=/path/to/worktree
+    ///     -s disk-write-folder=/path/to/worktree/.git
     /// ```
     ///
     /// These permissions are quite broad and should be used with caution:

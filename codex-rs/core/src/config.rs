@@ -540,6 +540,28 @@ pub fn parse_sandbox_permission_with_base_path(
 ) -> std::io::Result<SandboxPermission> {
     use SandboxPermission::*;
 
+    if let Some(path) = raw.strip_prefix("disk-read-folder=") {
+        return if path.is_empty() {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "--sandbox-permission disk-read-folder=<PATH> requires a non-empty PATH",
+            ))
+        } else {
+            use path_absolutize::*;
+
+            let file = std::path::PathBuf::from(path);
+            let absolute_path = if file.is_relative() {
+                file.absolutize_from(base_path.clone())
+            } else {
+                file.absolutize()
+            }
+            .map(|path| path.into_owned())?;
+            Ok(SandboxPermission::DiskReadFolder {
+                folder: absolute_path,
+            })
+        };
+    }
+
     if let Some(path) = raw.strip_prefix("disk-write-folder=") {
         return if path.is_empty() {
             Err(std::io::Error::new(

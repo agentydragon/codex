@@ -236,7 +236,7 @@ impl SandboxPolicy {
                 DiskWriteFolder { folder } => {
                     writable_roots.push(folder.clone());
                 }
-                DiskFullReadAccess | NetworkFullAccess => {}
+                DiskFullReadAccess | NetworkFullAccess | DiskReadFolder { .. } => {}
                 DiskFullWriteAccess => {
                     // Currently, we expect callers to only invoke this method
                     // after verifying has_full_disk_write_access() is false.
@@ -294,6 +294,11 @@ pub enum SandboxPermission {
     /// Is allowed to write to the current working directory (in practice, this
     /// is the `cwd` where `codex` was spawned).
     DiskWriteCwd,
+
+    /// Is allowed to read files under the specified folder.
+    /// Note this folder must be an absolute path and Git worktrees require
+    /// whitelisting both the worktree and its external metadata folder.
+    DiskReadFolder { folder: std::path::PathBuf },
 
     /// Is allowed to the specified folder. `PathBuf` must be an
     /// absolute path, though it is up to the caller to canonicalize
