@@ -1,10 +1,10 @@
 +++
 id = "38"
 title = "Fix Approval Dialog Transparent Background"
-status = "done"
+status = "open"
+freeform_status = ""
 dependencies = ""
-summary = "The approval dialog background is transparent, causing prompt text underneath to overlap and become unreadable."
-last_updated = "2025-06-25T23:00:00.000000"
+last_updated = "2025-06-26T17:52:40.329780"
 +++
 
 > *UI bug:* When the approval dialog appears, its background is transparent and any partially entered prompt text shows through, overlapping and confusing the dialog.
