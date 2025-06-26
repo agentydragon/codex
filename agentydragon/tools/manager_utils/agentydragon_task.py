@@ -627,16 +627,24 @@ def workflow():
         except subprocess.CalledProcessError:
             click.echo(f"Merge of branch {bname} failed due to conflicts", err=True)
             if click.confirm(f"Launch Merge-Conflict-Resolution agent for branch {bname}?", default=True):
+                # Switch into the task's worktree so the agent resolves conflicts in context
+                task_wt = worktree_dir() / path_map[tid].stem
                 prompt_path = repo_root() / "agentydragon" / "prompts" / "merge-conflict-fix.md"
-                click.echo(f"Launching Merge Conflict Resolution agent for {bname}")
-                # Read the merge-conflict prompt template and append branch-specific instructions,
-                # then feed to codex exec non-interactively via stdin.
+                click.echo(f"Launching Merge Conflict Resolution agent for {bname} (cwd={task_wt})")
+                # Load the merge-conflict prompt template and append branch-specific instruction
                 with open(prompt_path, 'r') as f:
                     prompt = f.read()
-                prompt += f"\nBranch: {bname}\nPlease resolve all merge conflicts and produce a clean merge into 'agentydragon'."
-                subprocess.check_call([
-                    "codex", "exec", "--full-auto", "--cd", str(root)
-                ], input=prompt, text=True)
+                prompt += (
+                    f"\nBranch: {bname}\n"
+                    "Please resolve all merge conflicts so that this branch can be cleanly "
+                    "merged into 'agentydragon'."
+                )
+                subprocess.check_call(
+                    ["codex", "exec", "--full-auto"],
+                    cwd=task_wt,
+                    input=prompt,
+                    text=True,
+                )
         # after successful merge or conflict handling, continue
     # 3. Dispose merged tasks
     for tid, _ in ready:
