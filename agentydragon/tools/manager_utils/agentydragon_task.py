@@ -556,12 +556,16 @@ def workflow():
         if selected:
             for tid in selected:
                 click.echo(f"Launching Commit agent for task {tid}")
+                # preserve working directory as commit_cmd may change cwd
+                orig_cwd = os.getcwd()
                 try:
                     commit_cmd(args=[tid], standalone_mode=False)
                 except SystemExit as e:
                     code = e.code or 1
                     click.echo(f"Commit agent failed for {tid} (exit {code})", err=True)
                     commit_failures.append((tid, f"exit {code}"))
+                finally:
+                    os.chdir(root)
 
     # 1a. Fixer phase: if any commit agents failed, offer a full-auto Dev agent to fix errors using multi-select
     if commit_failures:
@@ -593,7 +597,9 @@ def workflow():
                 if tid not in fixes:
                     continue
                 click.echo(f"Launching Dev fix agent for task {tid}")
-                prev = os.environ.get("FIX_COMMIT_ERROR")
+                # preserve working directory as the agent may change cwd
+                prev_cwd = os.getcwd()
+                prev_err = os.environ.get("FIX_COMMIT_ERROR")
                 os.environ["FIX_COMMIT_ERROR"] = err
                 buf = io.StringIO()
                 try:
@@ -602,12 +608,14 @@ def workflow():
                     ret = 0
                 except SystemExit as e:
                     ret = e.code or 1
+                finally:
+                    os.chdir(root)
                 if ret != 0:
                     click.echo(f"Dev fix agent failed for {tid} (exit {ret})", err=True)
-                if prev is None:
+                if prev_err is None:
                     del os.environ["FIX_COMMIT_ERROR"]
                 else:
-                    os.environ["FIX_COMMIT_ERROR"] = prev
+                    os.environ["FIX_COMMIT_ERROR"] = prev_err
     # 2. Merge ready branches
     for tid, bname in ready:
         if click.confirm(f"Merge branch {bname} into agentydragon?", default=True):
@@ -662,9 +670,14 @@ def workflow():
             click.echo("Launching Developer agents for selected unblocked tasks:")
             for tid in selected_unblocked:
                 click.echo(f"  - {tid}")
-                create_task_worktree_cmd(
-                    args=["--agent", "--tmux", tid], standalone_mode=False
-                )
+                # preserve working directory as the agent may change cwd
+                orig_cwd = os.getcwd()
+                try:
+                    create_task_worktree_cmd(
+                        args=["--agent", "--tmux", tid], standalone_mode=False
+                    )
+                finally:
+                    os.chdir(root)
     # Print timing for print/table phase and total
     # timings not supported for workflow
 

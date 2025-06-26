@@ -94,10 +94,9 @@ def main(task_inputs):
 
     msg_file = Path(subprocess.check_output(["mktemp"]).decode().strip())
     try:
-        os.chdir(wt)
         # Abort early if no pending changes in this worktree
         status_out = subprocess.check_output(
-            ["git", "status", "--porcelain"], text=True
+            ["git", "status", "--porcelain"], cwd=wt, text=True
         ).strip()
         if not status_out:
             click.echo(
@@ -105,8 +104,9 @@ def main(task_inputs):
                 err=True,
             )
             sys.exit(0)
-        cmd = ["codex", "--full-auto", "exec", "--output-last-message", str(msg_file)]
-        # Run the Commit agent in silent mode (suppressing its full stdout)
+        # Use codex's built-in --cd flag instead of changing working dir
+        cd_arg = ["--cd", str(wt)]
+        cmd = ["codex"] + cd_arg + ["--full-auto", "exec", "--output-last-message", str(msg_file)]
         click.echo(f"Running commit agent: {' '.join(cmd)}")
         prompt_content = prompt_file.read_text(encoding="utf-8")
         task_content = task_file.read_text(encoding="utf-8")
@@ -129,6 +129,7 @@ def main(task_inputs):
         msg = msg_file.read_text(encoding="utf-8").strip()
         click.echo("Commit message:\n" + msg)
     finally:
+        # cleanup temp file
         msg_file.unlink()
 
 

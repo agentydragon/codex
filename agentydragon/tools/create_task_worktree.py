@@ -171,17 +171,14 @@ def main(agent, tmux_mode, interactive, shell_mode, skip_presubmit, task_inputs)
             )
 
     click.echo(f"Launching Developer Codex agent for task {slug} in sandboxed worktree")
-
-    click.echo(f"Launching Developer Codex agent for task {slug} in sandboxed worktree")
-    os.chdir(wt_path)
-    # Prepare Codex invocation: shell_mode ⇒ interactive shell (await user),
-    # interactive ⇒ auto-run without exec, default ⇒ auto-run + exec
+    # Use codex's built-in --cd flag instead of changing working dir
+    cd_arg = ["--cd", str(wt_path)]
     if shell_mode:
-        cmd = ["codex"]
+        cmd = ["codex"] + cd_arg
     elif interactive:
-        cmd = ["codex", "--full-auto"]
+        cmd = ["codex", "--full-auto"] + cd_arg
     else:
-        cmd = ["codex", "--full-auto", "exec"]
+        cmd = ["codex", "--full-auto", "exec"] + cd_arg
 
     # Build a concise task reference instead of pasting full spec
     md_path = tasks_dir() / f"{slug}.md"
