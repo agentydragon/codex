@@ -4,15 +4,8 @@ import type { SpawnOptions } from "child_process";
 
 import { exec } from "./raw-exec.js";
 import { log } from "../../logger/log.js";
+import { getCommonRoots } from "./common.js";
 
-function getCommonRoots() {
-  const home = process.env["HOME"];
-  return [
-    // Without these roots, pyenv rehash may fail if shims isn't writable
-    `${home}/.pyenv`,
-    `${home}/.pyenv/shims`,
-  ];
-}
 
 /**
  * When working with `sandbox-exec`, only consider `sandbox-exec` in `/usr/bin`
