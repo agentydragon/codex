@@ -1,10 +1,10 @@
 +++
 id = "02"
 title = "Granular Auto-Approval Predicates"
-status = "done"
+status = "merged"
 freeform_status = ""
-dependencies = "11" # Rationale: depends on Task 11 for user-configurable approval predicates
-last_updated = "2025-06-25T10:48:30.000000"
+dependencies = "11"
+last_updated = "2025-06-26T22:10:36.961398"
 +++
 
 # Task 02: Granular Auto-Approval Predicates
