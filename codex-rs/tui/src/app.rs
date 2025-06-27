@@ -506,6 +506,12 @@ impl<'a> App<'a> {
                             self.app_event_tx.send(AppEvent::Redraw);
                         }
                     }
+                    SlashCommand::ExecHistory => {
+                        if let AppState::Chat { widget } = &mut self.app_state {
+                            widget.push_exec_history();
+                            self.app_event_tx.send(AppEvent::Redraw);
+                        }
+                    }
                 },
                 AppEvent::ShellCommand(cmd) => {
                     if let AppState::Chat { widget } = &mut self.app_state {

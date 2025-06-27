@@ -48,6 +48,7 @@ use crate::exec::ExecToolCallOutput;
 use crate::exec::SandboxType;
 use crate::exec::process_exec_tool_call;
 use crate::exec_env::create_env;
+use crate::exec_history::{ExecHistory, ExecHistoryEntry, ExecResult};
 use crate::flags::OPENAI_STREAM_MAX_RETRIES;
 use crate::mcp_connection_manager::McpConnectionManager;
 use crate::mcp_connection_manager::try_parse_fully_qualified_tool_name;
@@ -167,6 +168,7 @@ impl Codex {
 ///
 /// A session has at most 1 running task at a time, and can be interrupted by user input.
 pub(crate) struct Session {
+    session_id: Uuid,
     client: ModelClient,
     tx_event: Sender<Event>,
     ctrl_c: Arc<Notify>,
@@ -195,6 +197,7 @@ pub(crate) struct Session {
     rollout: Mutex<Option<crate::rollout::RolloutRecorder>>,
     state: Mutex<State>,
     codex_linux_sandbox_exe: Option<PathBuf>,
+    exec_history: ExecHistory,
 }
 
 impl Session {
@@ -657,6 +660,7 @@ async fn submission_loop(
                     };
 
                 sess = Some(Arc::new(Session {
+                    session_id,
                     client,
                     tx_event: tx_event.clone(),
                     ctrl_c: Arc::clone(&ctrl_c),
@@ -672,6 +676,7 @@ async fn submission_loop(
                     state: Mutex::new(state),
                     rollout: Mutex::new(rollout_recorder),
                     codex_linux_sandbox_exe: config.codex_linux_sandbox_exe.clone(),
+                    exec_history: ExecHistory::new(&config.codex_home),
                 }));
 
                 // Gather history metadata for SessionConfiguredEvent.
@@ -1260,6 +1265,19 @@ async fn handle_container_exec_with_params(
     sub_id: String,
     call_id: String,
 ) -> ResponseInputItem {
+    // Create initial exec history entry
+    let mut exec_entry = ExecHistoryEntry {
+        id: call_id.clone(),
+        session_id: sess.session_id,
+        timestamp: std::time::SystemTime::now(),
+        command: params.command.clone(),
+        working_dir: params.cwd.to_string_lossy().to_string(),
+        approval_requested: false,
+        approval_decision: None,
+        auto_approved: false,
+        execution_started: false,
+        execution_result: None,
+    };
     // check if this was a patch, and apply it if so
     match maybe_parse_apply_patch_verified(&params.command, &params.cwd) {
         MaybeApplyPatchVerified::Body(changes) => {
@@ -1313,8 +1331,16 @@ async fn handle_container_exec_with_params(
         }
     };
     let sandbox_type = match safety {
-        SafetyCheck::AutoApprove { sandbox_type } => sandbox_type,
+        SafetyCheck::AutoApprove { sandbox_type } => {
+            exec_entry.auto_approved = true;
+            sandbox_type
+        }
         SafetyCheck::AskUser => {
+            exec_entry.approval_requested = true;
+            // Log the approval request
+            if let Err(e) = sess.exec_history.append_entry(&exec_entry) {
+                warn!("Failed to log exec history: {}", e);
+            }
             let rx_approve = sess
                 .request_command_approval(
                     sub_id.clone(),
@@ -1323,12 +1349,19 @@ async fn handle_container_exec_with_params(
                     None,
                 )
                 .await;
-            match rx_approve.await.unwrap_or_default() {
+            let decision = rx_approve.await.unwrap_or_default();
+            exec_entry.approval_decision = Some(decision.clone());
+            
+            match decision {
                 ReviewDecision::Approved => (),
                 ReviewDecision::ApprovedForSession => {
                     sess.add_approved_command(params.command.clone());
                 }
                 ReviewDecision::Denied | ReviewDecision::Abort => {
+                    // Log the denial
+                    if let Err(e) = sess.exec_history.append_entry(&exec_entry) {
+                        warn!("Failed to log exec history: {}", e);
+                    }
                     return ResponseInputItem::FunctionCallOutput {
                         call_id,
                         output: crate::models::FunctionCallOutputPayload {
@@ -1345,6 +1378,10 @@ async fn handle_container_exec_with_params(
             SandboxType::None
         }
         SafetyCheck::Reject { reason } => {
+            exec_entry.approval_decision = Some(ReviewDecision::Denied);
+            if let Err(e) = sess.exec_history.append_entry(&exec_entry) {
+                warn!("Failed to log exec history: {}", e);
+            }
             return ResponseInputItem::FunctionCallOutput {
                 call_id,
                 output: crate::models::FunctionCallOutputPayload {
@@ -1355,9 +1392,16 @@ async fn handle_container_exec_with_params(
         }
     };
 
+    // Mark execution as started
+    exec_entry.execution_started = true;
+    if let Err(e) = sess.exec_history.append_entry(&exec_entry) {
+        warn!("Failed to log exec history: {}", e);
+    }
+    
     sess.notify_exec_command_begin(&sub_id, &call_id, &params)
         .await;
 
+    let start_time = std::time::Instant::now();
     let output_result = process_exec_tool_call(
         params.clone(),
         sandbox_type,
@@ -1367,6 +1411,8 @@ async fn handle_container_exec_with_params(
     )
     .await;
 
+    let execution_duration = start_time.elapsed();
+    
     match output_result {
         Ok(output) => {
             let ExecToolCallOutput {
@@ -1375,6 +1421,16 @@ async fn handle_container_exec_with_params(
                 stderr,
                 duration,
             } = output;
+            
+            // Update exec history with result
+            exec_entry.execution_result = Some(ExecResult {
+                exit_code: Some(exit_code),
+                duration_ms: execution_duration.as_millis() as u64,
+                error: None,
+            });
+            if let Err(e) = sess.exec_history.append_entry(&exec_entry) {
+                warn!("Failed to log exec history: {}", e);
+            }
 
             sess.notify_exec_command_end(&sub_id, &call_id, &stdout, &stderr, exit_code)
                 .await;
@@ -1395,9 +1451,27 @@ async fn handle_container_exec_with_params(
             }
         }
         Err(CodexErr::Sandbox(error)) => {
+            // Log sandbox error
+            exec_entry.execution_result = Some(ExecResult {
+                exit_code: None,
+                duration_ms: execution_duration.as_millis() as u64,
+                error: Some(format!("Sandbox error: {:?}", error)),
+            });
+            if let Err(e) = sess.exec_history.append_entry(&exec_entry) {
+                warn!("Failed to log exec history: {}", e);
+            }
             handle_sanbox_error(error, sandbox_type, params, sess, sub_id, call_id).await
         }
         Err(e) => {
+            // Log non-sandbox error
+            exec_entry.execution_result = Some(ExecResult {
+                exit_code: None,
+                duration_ms: execution_duration.as_millis() as u64,
+                error: Some(format!("Execution error: {}", e)),
+            });
+            if let Err(e_log) = sess.exec_history.append_entry(&exec_entry) {
+                warn!("Failed to log exec history: {}", e_log);
+            }
             // Handle non-sandbox errors
             ResponseInputItem::FunctionCallOutput {
                 call_id,

@@ -17,6 +17,7 @@ mod chat_composer;
 mod chat_composer_history;
 mod command_popup;
 mod config_reload_view;
+mod exec_history_view;
 mod inspect_env_view;
 mod mount_view;
 mod shell_command_view;
@@ -27,6 +28,7 @@ pub(crate) use chat_composer::InputResult;
 
 use approval_modal_view::ApprovalModalView;
 use config_reload_view::ConfigReloadView;
+use exec_history_view::ExecHistoryView;
 use inspect_env_view::InspectEnvView;
 use mount_view::{MountAddView, MountRemoveView};
 use shell_command_view::ShellCommandView;
@@ -189,6 +191,13 @@ impl BottomPane<'_> {
     /// Launch interactive shell-command dialog (prompt for arbitrary command).
     pub fn push_shell_command_interactive(&mut self) {
         let view = ShellCommandView::new(self.app_event_tx.clone());
+        self.active_view = Some(Box::new(view));
+        self.request_redraw();
+    }
+    
+    /// Launch exec history view.
+    pub fn push_exec_history(&mut self, codex_home: &std::path::PathBuf) {
+        let view = ExecHistoryView::new(codex_home);
         self.active_view = Some(Box::new(view));
         self.request_redraw();
     }

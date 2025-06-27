@@ -18,6 +18,7 @@ mod conversation_history;
 pub mod error;
 pub mod exec;
 pub mod exec_env;
+pub mod exec_history;
 mod flags;
 mod is_safe_command;
 mod mcp_connection_manager;

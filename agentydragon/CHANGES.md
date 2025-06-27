@@ -1,56 +1,76 @@
-# codex-rs: Changes between HEAD and main
+# codex-rs Changelog
 
-This document summarizes new and removed features, configuration options,
-and behavioral changes in the `codex-rs` workspace between the `main`
-branch and the current `HEAD`. Only additions/deletions (not unmodified
-code) are listed, with examples of usage and configuration.
+This document summarizes changes between `main` and the current HEAD for the `codex-rs` workspace.
 
----
+## 🚀 New Features
 
-## CLI Enhancements
+### Build & Installation
 
-### Build & Install from Source
+- **Rust-native binary installation**: you can now build and install the Rust CLI from source:
 
 ```shell
 cargo install --path cli --locked
-# install system-wide:
+```
+
+For system-wide installation (e.g., `/usr/local`):
+
+```shell
 sudo cargo install --path cli --locked --root /usr/local
 ```
 
-### New `codex config` Subcommand
+### Custom Approval Predicates (`auto_allow`)
 
-Manage your `~/.codex/config.toml` directly without manually editing:
+- Added an `auto_allow` section in `config.toml` to define user-provided scripts that vote on each shell command (`allow`, `deny`, or `no-opinion`).
 
-```shell
-codex config edit            # open config in $EDITOR (or vi)
-codex config set KEY VALUE   # set a TOML literal, e.g. tui.auto_mount_repo true
+```toml
+[[auto_allow]]
+script = "/path/to/approve_predicate.py"
 ```
 
-### New `codex inspect-env` Command
+##### Example predicate script (`approve_predicate.py`)
 
-Inspect the sandbox/container environment (mounts, permissions, network):
+```python
+#!/usr/bin/env python3
+"""
+Custom auto-approval predicate for codex-rs.
 
-```shell
-codex inspect-env --full-auto
-codex inspect-env -s network=disable -s mount=/mydir=rw
+Reads the candidate shell command as its sole argument and prints exactly
+one of: "allow", "deny", or "no-opinion" to stdout.
+"""
+import sys
+
+def main(cmd: str) -> None:
+    # Deny destructive patterns
+    if "rm -rf /" in cmd:
+        print("deny")
+        return
+
+    # Auto-allow git commands
+    if cmd.strip().startswith("git "):
+        print("allow")
+        return
+
+    # Otherwise, defer to manual approval
+    print("no-opinion")
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.exit("Usage: approve_predicate.py '<full command line>'")
+    main(sys.argv[1])
 ```
 
-### Resume TUI Sessions by UUID
+### Model Context Protocol Enhancements
 
-```shell
-codex session <SESSION_UUID>
+- Expanded MCP server configuration examples under `mcp_servers` in `config.toml`:
+
+```toml
+[mcp_servers.server-name]
+command = "npx"
+args    = ["-y", "mcp-server"]
+env     = { "API_KEY" = "value" }
 ```
 
-### MCP Server (JSON‑RPC) Support
-
-Launch Codex as an MCP _server_ over stdin/stdout and speak the
-Model Context Protocol (JSON-RPC):
-
-```shell
-npx @modelcontextprotocol/inspector codex mcp
-```
-
-#### Sample JSON‑RPC Interaction
+- Added JSON-RPC examples for `tools/list` and `tools/call` messages:
 
 ```jsonc
 // ListTools request
@@ -58,117 +78,95 @@ npx @modelcontextprotocol/inspector codex mcp
 
 // CallTool request
 { "jsonrpc": "2.0", "id": 2, "method": "tools/call",
-  "params": { "name": "codex", "arguments": { "prompt": "Hello" } }
+  "params": { "name": "codex", "arguments": { "prompt": "Hello!" } }
 }
-
-// CallTool response (abbreviated)
-{ "jsonrpc": "2.0", "id": 2, "result": {
-    "content": [ { "type": "text", "text": "Hi there", "annotations": null } ],
-    "is_error": false
-}}
 ```
 
----
+### Built-in System Prompt Override
 
-## Configuration Changes
+- Introduced `CODEX_BASE_INSTRUCTIONS_FILE` environment variable to override or disable the built-in system prompt (`prompt.md`).
 
-### `auto_allow` Predicate Scripts
+## ⚙️ CLI Enhancements
 
-Automatically approve or deny shell commands via custom scripts:
+### `codex config` Subcommands
+
+- Added `config` subcommand to manage `~/.codex/config.toml`:
+
+```shell
+codex config edit               # open config in $EDITOR (or vi)
+codex config set KEY VALUE      # set a TOML key (e.g., tui.auto_mount_repo true)
+```
+
+### Session Resume
+
+- Added `codex session <UUID>` to resume an existing TUI session.
+
+### Sandbox Inspection (`inspect-env`)
+
+- New `codex inspect-env` command to display sandbox mounts, permissions, and network:
+
+```shell
+codex inspect-env --full-auto -s disk-full-read-access
+```
+
+### Sandbox Permission Flags
+
+- Introduced `--sandbox-permission/-s` flags to grant granular sandbox permissions via CLI:
+
+```shell
+codex -s disk-full-read-access \
+      -s disk-write-cwd \
+      -s disk-write-platform-user-temp-folder
+```
+
+## 🛠 Configuration Schema Changes
+
+### Approval Policy Rename
+
+- Changed default `approval_policy` value from `untrusted` to `unless-allow-listed`.
+
+### Sandbox Permissions
+
+- Replaced the old `[sandbox]` table with a `sandbox_permissions` array. For example:
 
 ```toml
-[[auto_allow]]
-script = "/path/to/approve_predicate.sh"
-[[auto_allow]]
-script = "my_predicate --flag"
+sandbox_permissions = [
+  "disk-full-read-access",
+  "disk-write-cwd",
+  "disk-write-platform-user-temp-folder",
+]
 ```
 
-Vote resolution:
-- A `deny` vote aborts execution.
-- An `allow` vote auto-approves.
-- Otherwise falls back to manual approval prompt.
-
-### `base_instructions_override`
-
-Override or disable the built-in system prompt (`prompt.md`):
-
-```bash
-export CODEX_BASE_INSTRUCTIONS_FILE=custom_prompt.md   # use custom prompt
-export CODEX_BASE_INSTRUCTIONS_FILE=""             # disable base prompt
-```
+- Use `disk-write-folder=/path/to/folder` or `disk-read-folder=/path/to/folder` to grant access to custom paths.
 
 ### TUI Configuration Options
 
-In `~/.codex/config.toml`, under the `[tui]` table:
+- Added new TUI settings in `config.toml`:
 
 ```toml
-editor          = "${VISUAL:-${EDITOR:-nvim}}"  # external editor for prompt
-message_spacing = true                           # insert blank line between messages
-sender_break_line = true                         # sender label on its own line
+[tui]
+disable_mouse_capture = true     # let your terminal handle mouse selection
+composer_max_rows = 10           # max input lines before internal scrolling
+editor = "${VISUAL:-${EDITOR:-nvim}}"  # external editor for prompt composition
+message_spacing = false          # insert blank lines between messages
+sender_break_line = false        # render sender label above content
 ```
 
----
+## 📚 Documentation Updates
 
-## Core Library Updates
+- **codex-rs/README.md**: Added build-from-source instructions, `auto_allow` guide, MCP JSON-RPC examples, and `codex config` walkthrough.
+- **config.md**: Updated `approval_policy`, added `sandbox_permissions`, `auto_allow`, and `base_instructions_override` sections; streamlined TUI docs.
+- **core/README.md**: Documented system prompt composition steps and `CODEX_BASE_INSTRUCTIONS_FILE` behavior.
+- **core/init.md**: Introduced a template for generating `AGENTS.md` for coding agents.
 
-### System Prompt Composition Customization
+## 🔄 Code & API Changes
 
-System messages now combine:
-1. Built-in prompt (`prompt.md`),
-2. User instructions (`AGENTS.md`/`instructions.md`),
-3. `apply-patch` tool instructions (for GPT-4.1),
-4. User command/prompt.
+- **cli crate**: integrated `SandboxPermissionOption`, extended `create_sandbox_policy`, introduced TOML override parsing and `apply_override` logic for `codex config set`.
+- **common crate**: added `SandboxPermissionOption`, removed deprecated `sandbox_summary` module, and updated `ApprovalModeCliArg` variant to `UnlessAllowListed`.
 
-Controlled via `CODEX_BASE_INSTRUCTIONS_FILE`.
+## 🛠 Dependency Updates
 
-### Chat Completions Tool Call Buffering
-
-User turns emitted during an in-flight tool invocation are buffered
-and flushed after the tool result, preventing interleaved messages.
-
-### SandboxPolicy API Extensions
-
-```rust
-policy.allow_disk_write_folder("/path/to/folder".into());
-policy.revoke_disk_write_folder("/path/to/folder");
-```
-
-### Auto‑Approval Predicate Engine
-
-```rust
-use codex_core::safety::{evaluate_auto_allow_predicates, AutoAllowVote};
-let vote = evaluate_auto_allow_predicates(&cmd, &config.auto_allow);
-match vote {
-    AutoAllowVote::Allow => /* auto-approve */, 
-    AutoAllowVote::Deny => /* reject */, 
-    AutoAllowVote::NoOpinion => /* prompt user */, 
-}
-```
-
----
-
-## TUI Improvements
-
-### Double Ctrl+D Exit Confirmation
-
-Prevent accidental exits by requiring two Ctrl+D within a timeout:
-
-```rust
-use codex_tui::confirm_ctrl_d::ConfirmCtrlD;
-let mut confirm = ConfirmCtrlD::new(require_double, timeout_secs);
-// confirm.handle(now) returns true to exit, false to prompt confirmation
-```
-
-### Markdown & Header Compact Rendering
-
-New rendering options (code-level) for more compact chat layout:
-- `markdown_compact`
-- `header_compact`
-
----
-
-## Documentation & Tests
-
-- `codex-rs/config.md`, `codex-rs/README.md`, `core/README.md` updated with examples.
-- New `core/init.md` guidance for generating `AGENTS.md` templates.
-- Added tests for `codex config`, `ConfirmCtrlD`, and `evaluate_auto_allow_predicates`.
+- `.gitignore`: now ignores `debug.log` and `debug-sequencing.log`.
+- **cli Cargo.toml**: added `toml`, `serde`, `uuid` (with serde/v4), and `tempfile` as a dev-dependency.
+- **common Cargo.toml**: removed `sandbox_summary` feature.
+- **Cargo.lock**: updated and added crates: `filetime`, `fsevent-sys`, `inotify`/`inotify-sys`, `kqueue`/`kqueue-sys`, `notify`, `mio v0.8.11`, `windows-sys v0.48.0`, `windows-targets v0.48.5`, and others.

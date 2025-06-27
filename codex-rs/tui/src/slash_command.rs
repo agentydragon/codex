@@ -28,6 +28,8 @@ pub enum SlashCommand {
     Init,
     /// Prompt to run a shell command in the container.
     Shell,
+    /// Show command execution history.
+    ExecHistory,
 }
 
 impl SlashCommand {
@@ -46,6 +48,7 @@ impl SlashCommand {
             }
             SlashCommand::Init => "Load the initial prompt into the composer for editing.",
             SlashCommand::Shell => "Run a shell command in the container.",
+            SlashCommand::ExecHistory => "Show command execution history with approval status.",
             SlashCommand::Quit => "Exit the application.",
         }
     }
