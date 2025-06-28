@@ -84,6 +84,7 @@ impl<'a> BottomPaneView<'a> for ShellCommandView {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::uninlined_format_args)]
 mod tests {
     use super::*;
     use crate::app_event::AppEvent;
@@ -123,7 +124,7 @@ mod tests {
         if let AppEvent::ShellCommand(cmd) = event {
             assert_eq!(cmd, "a");
         } else {
-            panic!("expected ShellCommand event, got {:?}", event);
+            panic!("expected ShellCommand event, got {event:?}");
         }
     }
 }

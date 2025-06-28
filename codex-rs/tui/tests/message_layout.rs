@@ -13,6 +13,7 @@ fn lines_from_userprompt(view: &codex_tui::text_block::TextBlock) -> Vec<String>
 }
 
 #[test]
+#[allow(clippy::unwrap_used, clippy::uninlined_format_args)]
 fn test_user_message_layout_combinations() {
     let tmp = TempDir::new().unwrap();
     let mut config = Config::load_from_base_config_with_overrides(
@@ -46,14 +47,14 @@ fn test_user_message_layout_combinations() {
             }
             assert_eq!(
                 got, expected,
-                "Layout mismatch for sender_break_line={}, message_spacing={}",
-                sender_break, message_spacing
+                "Layout mismatch for sender_break_line={sender_break}, message_spacing={message_spacing}"
             );
         }
     }
 }
 
 #[test]
+#[allow(clippy::unwrap_used, clippy::uninlined_format_args)]
 fn test_agent_message_layout_combinations() {
     let tmp = TempDir::new().unwrap();
     let mut config = Config::load_from_base_config_with_overrides(
@@ -87,14 +88,14 @@ fn test_agent_message_layout_combinations() {
             }
             assert_eq!(
                 got, expected,
-                "Agent layout mismatch for sender_break_line={}, message_spacing={}",
-                sender_break, message_spacing
+                "Agent layout mismatch for sender_break_line={sender_break}, message_spacing={message_spacing}"
             );
         }
     }
 }
 
 #[test]
+#[allow(clippy::unwrap_used, clippy::uninlined_format_args)]
 fn test_agent_reasoning_layout_combinations() {
     let tmp = TempDir::new().unwrap();
     let mut config = Config::load_from_base_config_with_overrides(
@@ -128,8 +129,7 @@ fn test_agent_reasoning_layout_combinations() {
             }
             assert_eq!(
                 got, expected,
-                "Reasoning layout mismatch for sender_break_line={}, message_spacing={}",
-                sender_break, message_spacing
+                "Reasoning layout mismatch for sender_break_line={sender_break}, message_spacing={message_spacing}"
             );
         }
     }

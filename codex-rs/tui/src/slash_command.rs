@@ -78,7 +78,7 @@ mod tests {
     #[test]
     fn inspect_env_description_contains_keyword() {
         let desc = SlashCommand::InspectEnv.description();
-        assert!(desc.contains("sandbox"), "description was: {}", desc);
+        assert!(desc.contains("sandbox"), "description was: {desc}");
     }
 
     #[test]

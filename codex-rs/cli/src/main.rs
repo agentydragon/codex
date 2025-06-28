@@ -266,6 +266,11 @@ fn apply_override(root: &mut toml::Value, path: &str, value: toml::Value) {
 // Tests for CLI parsing
 // ---------------------
 #[cfg(test)]
+#[allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::uninlined_format_args
+)]
 mod tests {
     use super::MultitoolCli;
     use clap::CommandFactory;
@@ -279,7 +284,7 @@ mod tests {
         let mut buf = Vec::new();
         cfg.write_long_help(&mut buf).unwrap();
         let help = String::from_utf8(buf).unwrap();
-        assert!(help.contains("edit"), "help missing 'edit': {}", help);
-        assert!(help.contains("set"), "help missing 'set': {}", help);
+        assert!(help.contains("edit"), "help missing 'edit': {help}");
+        assert!(help.contains("set"), "help missing 'set': {help}");
     }
 }

@@ -100,21 +100,18 @@ fn truncate_middle(text: &str, max_len: usize) -> String {
     } else {
         let ellipsis = '…';
         let trim_len = max_len.saturating_sub(ellipsis.len_utf8());
-        let start_len = (trim_len + 1) / 2;
+        let start_len = trim_len.div_ceil(2);
         let end_len = trim_len / 2;
         let start = &text[..start_len];
         let end = &text[text.len() - end_len..];
-        format!("{}{}{}", start, ellipsis, end)
+        format!("{start}{ellipsis}{end}")
     }
 }
 
 /// Build the dynamic session-scoped approval label for the given command string.
 fn session_scoped_label(cmd: &str, max_len: usize) -> String {
     let snippet = truncate_middle(cmd, max_len);
-    format!(
-        "Yes, always allow running `{}` for this session (a)",
-        snippet
-    )
+    format!("Yes, always allow running `{snippet}` for this session (a)")
 }
 
 /// Internal mode the widget is in – mirrors the TypeScript component.
@@ -413,7 +410,7 @@ impl WidgetRef for &UserApprovalWidget<'_> {
                         } else {
                             (" ", self.plain_style)
                         };
-                        Line::styled(format!("  {prefix} {}", label), style)
+                        Line::styled(format!("  {prefix} {label}"), style)
                     })
                     .collect()
             }
@@ -439,6 +436,11 @@ impl WidgetRef for &UserApprovalWidget<'_> {
 
 // Tests for approval widget behavior
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::uninlined_format_args,
+    clippy::expect_used
+)]
 mod tests {
     use super::*;
     use crossterm::event::KeyCode;
@@ -472,7 +474,7 @@ mod tests {
         let expected_idx = SELECT_OPTIONS
             .iter()
             .position(|opt| opt.enters_input_mode)
-            .unwrap();
+            .expect("no input-mode option");
         assert_eq!(widget.selected_option, expected_idx);
         assert_eq!(widget.input.value(), "feedback");
         assert!(rx.try_recv().is_err());
@@ -539,21 +541,13 @@ mod tests {
         // Assert: no cell in dialog region remains transparent or retains the sentinel background.
         for row in area.y..area.y + area.height {
             for col in area.x..area.x + area.width {
-                let cell = buf.cell((col, row)).unwrap();
+                let cell = buf.cell((col, row)).expect("cell missing");
                 assert_ne!(
                     cell.bg,
                     Color::Reset,
-                    "Found transparent cell at ({}, {})",
-                    col,
-                    row
+                    "Found transparent cell at ({col}, {row})"
                 );
-                assert_ne!(
-                    cell.bg,
-                    Color::Red,
-                    "Found unfilled cell at ({}, {})",
-                    col,
-                    row
-                );
+                assert_ne!(cell.bg, Color::Red, "Found unfilled cell at ({col}, {row})");
             }
         }
     }

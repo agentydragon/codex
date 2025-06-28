@@ -11,3 +11,4 @@
 - Proposed patches still prompt to "run this command" and the "always allow writing" option does not appear.
 - [ ] Config-changed popover destroys open approval dialog; session cannot continue afterwards.
 - Add style config for standard (non-selected) text in approval dialog.
+- [ ] Refactor duplicated RtSpan/indent logic in history_cell.rs (new_user_prompt, new_agent_message, new_agent_reasoning) to DRY common code.

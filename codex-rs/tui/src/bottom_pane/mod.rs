@@ -331,8 +331,8 @@ mod tests {
         assert!(
             pane.active_view
                 .as_mut()
-                .unwrap()
-                .should_hide_when_task_is_done()
+                .map(|v| v.should_hide_when_task_is_done())
+                .unwrap_or(false)
         );
     }
 
@@ -388,8 +388,8 @@ mod tests {
         assert!(
             pane.active_view
                 .as_mut()
-                .unwrap()
-                .should_hide_when_task_is_done()
+                .map(|v| v.should_hide_when_task_is_done())
+                .unwrap_or(false)
         );
         // The composer buffer should be cleared after submission
         let content = pane.composer.get_input_text();

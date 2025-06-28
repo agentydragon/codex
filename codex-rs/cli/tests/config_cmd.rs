@@ -1,11 +1,14 @@
 /// Integration test for the `codex config` subcommand.
 /// This uses `CARGO_BIN_EXE_codex` to locate the compiled binary.
 #[cfg(test)]
+#[allow(
+    clippy::expect_used,
+    clippy::uninlined_format_args,
+    clippy::single_component_path_imports
+)]
 mod cli_config {
     use std::fs;
     use std::process::Command;
-    use tempfile;
-    use toml;
 
     #[test]
     fn config_subcommand_help() {
@@ -18,8 +21,8 @@ mod cli_config {
         assert!(output.status.success(), "Exited with {:?}", output.status);
         let stdout = String::from_utf8_lossy(&output.stdout);
         // Should show config subcommands help
-        assert!(stdout.contains("edit"), "help missing 'edit': {}", stdout);
-        assert!(stdout.contains("set"), "help missing 'set': {}", stdout);
+        assert!(stdout.contains("edit"), "help missing 'edit': {stdout}");
+        assert!(stdout.contains("set"), "help missing 'set': {stdout}");
     }
 
     #[test]

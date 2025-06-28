@@ -166,7 +166,7 @@ impl HistoryCell {
                 Line::from(vec![
                     "OpenAI ".into(),
                     "Codex".bold(),
-                    format!(" v{}", VERSION).into(),
+                    format!(" v{VERSION}").into(),
                     " (research preview)".dim(),
                 ]),
                 Line::from(""),
@@ -211,7 +211,7 @@ impl HistoryCell {
             let lines = vec![
                 Line::from("model changed:".magenta().bold()),
                 Line::from(format!("requested: {}", config.model)),
-                Line::from(format!("used: {}", model)),
+                Line::from(format!("used: {model}")),
                 Line::from(""),
             ];
             HistoryCell::SessionInfo {
@@ -850,7 +850,9 @@ fn ensure_image_cache(
     width_cells: u16,
     render_cache: &std::cell::RefCell<Option<ImageRenderCache>>,
 ) -> usize {
-if let Some(cache) = render_cache.borrow().as_ref() && cache.width_cells == width_cells {
+    if let Some(cache) = render_cache.borrow().as_ref()
+        && cache.width_cells == width_cells
+    {
         return cache.height_rows;
     }
 

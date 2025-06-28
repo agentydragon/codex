@@ -248,17 +248,14 @@ fn run_ratatui_app(
                 return;
             }
             let mut last = std::fs::read_to_string(&config_path).unwrap_or_default();
-            for res in rx {
-                if let Ok(event) = res {
-                    if matches!(event.kind, EventKind::Modify(_)) {
-                        std::thread::sleep(Duration::from_millis(100));
-                        let new = std::fs::read_to_string(&config_path).unwrap_or_default();
-                        if new != last {
-                            let diff = crate::config_reload::generate_diff(&last, &new);
-                            last = new.clone();
-                            app_event_tx
-                                .send(crate::app_event::AppEvent::ConfigReloadRequest(diff));
-                        }
+            for event in rx.into_iter().flatten() {
+                if matches!(event.kind, EventKind::Modify(_)) {
+                    std::thread::sleep(Duration::from_millis(100));
+                    let new = std::fs::read_to_string(&config_path).unwrap_or_default();
+                    if new != last {
+                        let diff = crate::config_reload::generate_diff(&last, &new);
+                        last = new.clone();
+                        app_event_tx.send(crate::app_event::AppEvent::ConfigReloadRequest(diff));
                     }
                 }
             }
@@ -282,19 +279,20 @@ fn load_rollout_for_session(config: &Config, session_id: Uuid) -> Option<Vec<Res
     let target = session_id.to_string();
     for entry in fs::read_dir(&dir).ok()? {
         let path = entry.ok()?.path();
-        if let Some(fname) = path.file_name().and_then(|s| s.to_str()) {
-            if fname.starts_with("rollout-") && fname.contains(&target) && fname.ends_with(".jsonl")
-            {
-                let file = File::open(path).ok()?;
-                let reader = BufReader::new(file);
-                let mut items = Vec::new();
-                for line in reader.lines().flatten() {
-                    if let Ok(item) = serde_json::from_str::<ResponseItem>(&line) {
-                        items.push(item);
-                    }
+        if let Some(fname) = path.file_name().and_then(|s| s.to_str())
+            && fname.starts_with("rollout-")
+            && fname.contains(&target)
+            && fname.ends_with(".jsonl")
+        {
+            let file = File::open(path).ok()?;
+            let reader = BufReader::new(file);
+            let mut items = Vec::new();
+            for line in reader.lines().map_while(Result::ok) {
+                if let Ok(item) = serde_json::from_str::<ResponseItem>(&line) {
+                    items.push(item);
                 }
-                return Some(items);
             }
+            return Some(items);
         }
     }
     None
@@ -307,8 +305,7 @@ fn load_rollout_for_session(config: &Config, session_id: Uuid) -> Option<Vec<Res
 fn restore() {
     if let Err(err) = tui::restore() {
         eprintln!(
-            "failed to restore terminal. Run `reset` or restart your terminal to recover: {}",
-            err
+            "failed to restore terminal. Run `reset` or restart your terminal to recover: {err}"
         );
     }
 }
