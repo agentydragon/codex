@@ -10,7 +10,7 @@ from pathlib import Path
 
 import toml
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from agentydragon_tasks.common import worktrees_dir as worktree_dir
 
 FRONTMATTER_RE = re.compile(r"^\+\+\+\s*(.*?)\s*\+\+\+", re.S | re.M)
@@ -66,6 +66,7 @@ class TaskMeta(BaseModel):
     freeform_status: str = Field(default="")
     dependencies: list[str] = Field(default_factory=list)
     last_updated: datetime = Field(default_factory=datetime.utcnow)
+    model_config = ConfigDict(validate_assignment=True)
 
 
 def load_task(path: Path) -> (TaskMeta, str):
@@ -87,7 +88,7 @@ def load_task(path: Path) -> (TaskMeta, str):
 
 
 def save_task(path: Path, meta: TaskMeta, body: str) -> None:
-    tm = meta.model_dump()
+    tm = meta.model_dump(mode="json")
     # Serialize enum to its string value for front-matter
     if isinstance(tm.get("status"), Enum):
         tm["status"] = tm["status"].value

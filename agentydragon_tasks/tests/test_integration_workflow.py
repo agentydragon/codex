@@ -1,5 +1,4 @@
 import subprocess
-
 import agentydragon_tasks.task as task_cli
 from agentydragon_tasks.common import INTEGRATION_BRANCH
 from click.testing import CliRunner
@@ -35,6 +34,7 @@ Write a program test.py in repo root that prints 'Hello, world!'
 
     # run real agent and hydration (errors reported by caller)
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
 
     runner = CliRunner()
     # Invoke without catching exceptions so we see full traceback on error
@@ -48,7 +48,6 @@ Write a program test.py in repo root that prints 'Hello, world!'
     print(f"EXIT CODE: {result.exit_code}")
     print(f"OUTPUT:\n{result.output}")
     # ignore exit code (agent may error), but test.py should be created
-    assert (
-        "Hello, world!"
-        in (tmp_path / "tasks" / ".worktrees" / slug / "test.py").read_text()
-    )
+    from agentydragon_tasks.common import worktrees_dir
+
+    assert "Hello, world!" in (worktrees_dir() / slug / "test.py").read_text()

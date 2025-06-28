@@ -67,6 +67,7 @@ def _launch_cmd_in_tmux(label: str, cmd: list[str], cwd: Path) -> None:
         tmux_cmd = [
             "tmux",
             "new-window",
+            "-d",
             "-t",
             session,
             "-n",
@@ -296,7 +297,7 @@ def status(timings: bool):
                     "git",
                     "for-each-ref",
                     "--format=%(refname:short)",
-                    f"refs/heads/agentydragon-{tid}-*",
+                    f"refs/heads/{task_branch(tid)}",
                 ],
                 capture_output=True,
                 text=True,
@@ -554,7 +555,7 @@ def dispose(task_id):
         subprocess.run(["git", "worktree", "prune"], cwd=root)
         # Delete any matching branches
         # delete any matching local branches cleanly via for-each-ref
-        ref_pattern = f"refs/heads/{task_branch(tid)}-*"
+        ref_pattern = f"refs/heads/{task_branch(tid)}"
         branches = subprocess.run(
             ["git", "for-each-ref", "--format=%(refname:short)", ref_pattern],
             capture_output=True,
@@ -623,17 +624,15 @@ def start_agent(skip_presubmit: bool, agent_type: str, task_ids: tuple[str, ...]
         )
     for slug in task_ids:
         branch = task_branch(slug)
-        cwd = Path.cwd()
+        cwd = repo_root()
         # ensure task branch exists
         if branch not in list_task_branches():
             subprocess.check_call(
                 ["git", "branch", branch, INTEGRATION_BRANCH], cwd=cwd
             )
         # create or reuse worktree for branch
-        wt_base = cwd / "tasks" / ".worktrees"
-        wt_dir = wt_base / slug
+        wt_dir = worktrees_dir() / slug
         if not (wt_env := wt_dir.exists()):
-            wt_base.mkdir(parents=True, exist_ok=True)
             subprocess.check_call(
                 ["git", "worktree", "add", "--detach", str(wt_dir), branch],
                 cwd=cwd,
@@ -685,7 +684,7 @@ def shell(task_id):
 @cli.command()
 @click.argument("task_id")
 def merge(task_id):
-    """Merge branch for TASK_ID into agentydragon if worktree is clean, then optionally dispose."""
+    """Merge branch for TASK_ID into integration branch if worktree is clean, then optionally dispose."""
     try:
         slug = resolve_slug(task_id)
     except Exception as e:
@@ -703,8 +702,8 @@ def merge(task_id):
         sys.exit(1)
     repo = repo_root()
     branch = task_branch(slug)
-    click.echo(f"Merging {branch} into agentydragon")
-    run_git(["checkout", "agentydragon"], cwd=repo)
+    click.echo(f"Merging {branch} into {INTEGRATION_BRANCH}")
+    run_git(["checkout", INTEGRATION_BRANCH], cwd=repo)
     run_git(["merge", "--no-ff", branch], cwd=repo)
     if click.confirm("Dispose worktree and branch?", default=True):
         ctx = click.get_current_context()
@@ -754,7 +753,7 @@ def workflow():
                     "git",
                     "for-each-ref",
                     "--format=%(refname:short)",
-                    f"refs/heads/agentydragon-{tid}-*",
+                    f"refs/heads/{task_branch(tid)}",
                 ],
                 capture_output=True,
                 text=True,
@@ -769,7 +768,7 @@ def workflow():
                             "rev-list",
                             "--left-right",
                             "--count",
-                            f"{bname}...agentydragon",
+                            f"{bname}...{INTEGRATION_BRANCH}",
                         ],
                         cwd=root,
                     )
@@ -854,12 +853,13 @@ def workflow():
     # 2. Merge ready branches
     for tid, bname in ready:
         # Check if branch would merge cleanly via git merge-tree (no working-tree changes)
+
         try:
             base = subprocess.check_output(
-                ["git", "merge-base", "agentydragon", bname], cwd=root, text=True
+                ["git", "merge-base", INTEGRATION_BRANCH, bname], cwd=root, text=True
             ).strip()
             tree = subprocess.check_output(
-                ["git", "merge-tree", base, "agentydragon", bname],
+                ["git", "merge-tree", base, INTEGRATION_BRANCH, bname],
                 cwd=root,
                 text=True,
                 errors="ignore",
@@ -869,7 +869,7 @@ def workflow():
 
         if "<<<<<<<" in tree:
             click.echo(
-                f"Branch {bname} has merge conflicts with agentydragon", err=True
+                f"Branch {bname} has merge conflicts with {INTEGRATION_BRANCH}", err=True
             )
             if click.confirm(
                 f"Launch Merge-Conflict-Resolution agent for branch {bname}?",
@@ -918,10 +918,10 @@ def workflow():
                 continue
 
         # No merge conflicts: confirm and perform actual merge
-        if not click.confirm(f"Merge branch {bname} into agentydragon?", default=True):
+        if not click.confirm(f"Merge branch {bname} into {INTEGRATION_BRANCH}?", default=True):
             continue
-        click.echo(f"Merging {bname} into agentydragon")
-        run_git(["checkout", "agentydragon"], cwd=root)
+        click.echo(f"Merging {bname} into {INTEGRATION_BRANCH}")
+        run_git(["checkout", INTEGRATION_BRANCH], cwd=root)
         run_git(["merge", "--no-ff", bname], cwd=root)
     # 3. Dispose worktrees for tasks with no worktree (not started) or merged & clean worktree
     for tid, _ in ready:

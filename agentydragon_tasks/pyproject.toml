@@ -12,6 +12,7 @@ dependencies = [
     "click",
     "toml",
     "pydantic",
+    "platformdirs",
 ]
 
 [project.optional-dependencies]

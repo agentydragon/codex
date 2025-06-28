@@ -2,6 +2,7 @@
 """
 common.py: Shared utilities for agentydragon tooling scripts.
 """
+import os
 import subprocess
 from pathlib import Path
 
@@ -19,9 +20,22 @@ def tasks_dir() -> Path:
     return repo_root() / "tasks"
 
 
+def sanitize_repo_path(path: Path) -> str:
+    """Sanitize repo path into a single directory name by replacing path separators."""
+    return path.resolve().as_posix().lstrip("/").replace("/", "_")
+
+
 def worktrees_dir() -> Path:
-    """Path to the .worktrees directory under tasks."""
-    return tasks_dir() / ".worktrees"
+    """Path to the worktrees directory under user state (XDG)."""
+    from platformdirs import user_state_dir
+
+    base = Path(user_state_dir("agentydragon_tasks"))
+    appdir = base / "worktrees" / sanitize_repo_path(repo_root())
+    # ensure worktrees never reside inside the repo
+    if appdir.resolve().is_relative_to(repo_root()):
+        raise RuntimeError(f"Worktrees directory {appdir} is inside repo root; abort")
+    appdir.mkdir(parents=True, exist_ok=True)
+    return appdir
 
 
 def resolve_slug(input_id: str) -> str:
