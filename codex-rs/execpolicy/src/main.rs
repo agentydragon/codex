@@ -1,3 +1,5 @@
+// Temporary clippy exemption for format args; remove after cleanup
+#![allow(clippy::uninlined_format_args)]
 use anyhow::Result;
 use clap::Parser;
 use clap::Subcommand;

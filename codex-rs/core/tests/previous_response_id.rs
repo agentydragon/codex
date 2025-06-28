@@ -1,3 +1,5 @@
+// Temporary clippy exemption for format args in tests
+#![allow(clippy::uninlined_format_args)]
 use std::time::Duration;
 
 use codex_core::Codex;

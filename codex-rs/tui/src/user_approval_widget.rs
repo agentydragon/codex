@@ -32,6 +32,7 @@ use crate::app_event_sender::AppEventSender;
 use crate::exec_command::relativize_to_home;
 use crate::exec_command::strip_bash_lc_and_escape;
 use crate::parse_color;
+use crate::parse_style;
 
 /// Request coming from the agent that needs user approval.
 pub(crate) enum ApprovalRequest {
@@ -144,6 +145,8 @@ pub(crate) struct UserApprovalWidget<'a> {
     done: bool,
     /// Style for selected option prefix and text.
     select_style: Style,
+    /// Style for unselected (plain) option text.
+    plain_style: Style,
     /// Background color for the dialog.
     bg_color: Color,
 }
@@ -158,7 +161,8 @@ impl UserApprovalWidget<'_> {
         app_event_tx: AppEventSender,
         colors: codex_core::config_types::Colors,
     ) -> Self {
-        let select_style = Style::new().fg(parse_color(&colors.approval_select_fg));
+        let select_style = parse_style(&colors.approval_select_style);
+        let plain_style = parse_style(&colors.approval_plain_style);
         let bg_color = parse_color(&colors.popup_bg);
         let input = Input::default();
         let confirmation_prompt = match &approval_request {
@@ -226,6 +230,7 @@ impl UserApprovalWidget<'_> {
             mode: Mode::Select,
             done: false,
             select_style,
+            plain_style,
             bg_color,
         }
     }
@@ -362,7 +367,6 @@ impl UserApprovalWidget<'_> {
     }
 }
 
-const PLAIN: Style = Style::new();
 
 impl WidgetRef for &UserApprovalWidget<'_> {
     fn render_ref(&self, area: Rect, buf: &mut Buffer) {
@@ -409,7 +413,7 @@ impl WidgetRef for &UserApprovalWidget<'_> {
                         let (prefix, style) = if idx == self.selected_option {
                             ("▶", self.select_style)
                         } else {
-                            (" ", PLAIN)
+                            (" ", self.plain_style)
                         };
                         Line::styled(format!("  {prefix} {}", label), style)
                     })

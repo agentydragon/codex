@@ -209,7 +209,13 @@ pub struct Colors {
     /// Diff other (R/C)
     #[serde(default = "default_diff_other")]
     pub diff_other: String,
-    /// Approval dialog selection foreground
+    /// Approval dialog selection style (e.g. "bold,fg=Blue,underline")
+    #[serde(default = "default_approval_select_style")]
+    pub approval_select_style: String,
+    /// Approval dialog default/plain style (e.g. "fg=Gray")
+    #[serde(default = "default_approval_plain_style")]
+    pub approval_plain_style: String,
+    /// Approval dialog selection foreground (deprecated; use selection style)
     #[serde(default = "default_approval_select_fg")]
     pub approval_select_fg: String,
     /// Approval dialog error text
@@ -271,6 +277,14 @@ fn default_approval_error() -> String {
     "Red".to_string()
 }
 
+fn default_approval_select_style() -> String {
+    "bold,fg=Blue".to_string()
+}
+
+fn default_approval_plain_style() -> String {
+    "".to_string()
+}
+
 impl Default for Colors {
     fn default() -> Self {
         Self {
@@ -289,6 +303,8 @@ impl Default for Colors {
             diff_remove: default_diff_remove(),
             diff_modify: default_diff_modify(),
             diff_other: default_diff_other(),
+            approval_select_style: default_approval_select_style(),
+            approval_plain_style: default_approval_plain_style(),
             approval_select_fg: default_approval_select_fg(),
             approval_error: default_approval_error(),
         }

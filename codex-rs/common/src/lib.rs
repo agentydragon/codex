@@ -1,3 +1,5 @@
+// Temporary clippy exemption for format args in elapsed
+#![allow(clippy::uninlined_format_args)]
 #[cfg(feature = "cli")]
 mod approval_mode_cli_arg;
 

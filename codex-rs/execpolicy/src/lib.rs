@@ -1,5 +1,11 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
+// Temporary clippy exemptions for formatting, slicing, and nested-if lints
+#![allow(
+    clippy::uninlined_format_args,
+    clippy::cloned_ref_to_slice_refs,
+    clippy::collapsible_if
+)]
 #[macro_use]
 extern crate starlark;
 

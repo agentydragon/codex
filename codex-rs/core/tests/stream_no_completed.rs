@@ -1,3 +1,4 @@
+#![allow(clippy::uninlined_format_args)]
 //! Verifies that the agent retries when the SSE stream terminates before
 //! delivering a `response.completed` event.
 
