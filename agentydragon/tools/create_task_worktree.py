@@ -174,7 +174,8 @@ def main(
                 "rsync",
                 "-a",
                 "--delete",
-                "--exclude=.git*",
+                # Do not include .git, but *do* include .gitignore, .github etc.
+                "--exclude=.git/",
                 "--exclude=.worktrees/",
                 f"{src}/",
                 f"{dst}/",
