@@ -3,7 +3,7 @@ id = "51"
 title = "Add event layer for widget consolidation"
 status = "open"
 freeform_status = ""
-dependencies = []
+dependencies = [] # Manager rationale: add event layer for widget consolidation; no prerequisite tasks
 last_updated = "2025-06-26T06:30:00Z"
 +++
 

@@ -3,7 +3,7 @@ id = "42"
 title = "Inspect Env CLI command returns empty output on Linux and macOS"
 status = "open"
 freeform_status = ""
-dependencies = []
+dependencies = [] # Manager rationale: fix inspect-env bug on Linux and macOS; independent task
 last_updated = "2025-06-28T02:09:48Z"
 +++
 

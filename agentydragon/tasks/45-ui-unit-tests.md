@@ -3,7 +3,7 @@ id = "45"
 title = "Add comprehensive UI unit tests"
 status = "open"
 freeform_status = ""
-dependencies = []
+dependencies = [] # Manager rationale: comprehensive UI tests; independent task
 last_updated = "2025-06-26T06:30:00Z"
 +++
 

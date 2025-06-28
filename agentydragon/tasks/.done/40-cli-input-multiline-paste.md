@@ -1,10 +1,9 @@
 +++
 id = "40"
 title = "Support Multiline Paste in codex-rs CLI Input Window"
-status = "open"
-freeform_status = ""
-dependencies = []
-last_updated = "2025-06-26T06:47:01.458158"
+status = "merged"
+dependencies = ""
+last_updated = "2025-06-27T19:41:13.733392"
 +++
 
 # Task 40: Support Multiline Paste in codex-rs CLI Input Window

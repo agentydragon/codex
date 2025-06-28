@@ -3,7 +3,7 @@ id = "12"
 title = "Runtime Internet Connection Toggle"
 status = "open"
 freeform_status = ""
-dependencies = [] # No prerequisites
+dependencies = [] # Manager rationale: network toggle feature; requires no prerequisite tasks
 last_updated = "2025-06-25T01:40:09.509507"
 +++
 

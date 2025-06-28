@@ -3,7 +3,7 @@ id = "22"
 title = "Message Separation and Sender-Content Layout Options"
 status = "done"
 freeform_status = ""
-dependencies = [] # No prerequisites
+dependencies = [] # Manager rationale: layout options feature; no prerequisite tasks
 last_updated = "2025-06-25T11:05:55.000000"
 +++
 

@@ -3,7 +3,7 @@ id = "47"
 title = "Enhance inspect-env output for human-readable mount and environment details"
 status = "open"
 freeform_status = ""
-dependencies = []
+dependencies = [] # Manager rationale: inspect-env formatting enhancement; independent task
 last_updated = "2025-06-26T06:30:00Z"
 +++
 

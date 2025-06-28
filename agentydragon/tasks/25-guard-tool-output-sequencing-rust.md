@@ -3,7 +3,7 @@ id = "25"
 title = "Guard Against Missing Tool Output in Rust Server Sequencing"
 status = "needsinput"
 freeform_status = ""
-dependencies = [] # No prerequisites
+dependencies = [] # Manager rationale: Rust server sequencing guard; independent change
 last_updated = "2025-06-25T22:50:01.000000"
 +++
 
