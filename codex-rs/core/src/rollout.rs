@@ -8,9 +8,9 @@ use std::fs::{self};
 use std::io::Error as IoError;
 
 use serde::Serialize;
-use time::OffsetDateTime;
 use time::format_description::FormatItem;
 use time::macros::format_description;
+use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::{self};
@@ -35,7 +35,7 @@ struct SessionMeta {
 ///
 /// Rollouts are recorded as JSONL and can be inspected with tools such as:
 ///
-/// ```ignore
+/// ```bash
 /// $ jq -C . ~/.codex/sessions/rollout-2025-05-07T17-24-21-5973b6c0-94b8-487b-a530-2aeb6098ae0e.jsonl
 /// $ fx ~/.codex/sessions/rollout-2025-05-07T17-24-21-5973b6c0-94b8-487b-a530-2aeb6098ae0e.jsonl
 /// ```

@@ -15,7 +15,6 @@ use tokio::time::timeout;
 use tracing::debug;
 use tracing::trace;
 
-use crate::ModelProviderInfo;
 use crate::client_common::Prompt;
 use crate::client_common::ResponseEvent;
 use crate::client_common::ResponseStream;
@@ -27,6 +26,7 @@ use crate::models::ContentItem;
 use crate::models::ResponseItem;
 use crate::openai_tools::create_tools_json_for_chat_completions_api;
 use crate::util::backoff;
+use crate::ModelProviderInfo;
 
 /// Implementation for the classic Chat Completions API.
 pub(crate) async fn stream_chat_completions(
@@ -453,9 +453,9 @@ pub(crate) trait AggregateStreamExt: Stream<Item = Result<ResponseEvent>> + Size
     /// per turn instead of every incremental delta.  The produced
     /// `ResponseEvent` sequence for a typical text turn looks like:
     ///
-    /// ```ignore
-    ///     OutputItemDone(<full message>)
-    ///     Completed { .. }
+    /// ```text
+    /// OutputItemDone(<full message>)
+    /// Completed { .. }
     /// ```
     ///
     /// No other `OutputItemDone` events will be seen by the caller.

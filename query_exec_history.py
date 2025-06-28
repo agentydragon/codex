@@ -22,11 +22,20 @@ def main():
         return
 
     entries = []
+    decoder = json.JSONDecoder()
     with open(EXEC_HISTORY_FILE, 'r') as f:
         for line in f:
             if not line.strip():
                 continue
-            entries.append(json.loads(line))
+            try:
+                obj, _ = decoder.raw_decode(line)
+            except json.JSONDecodeError as e:
+                print(f"Invalid JSON line: {line.rstrip()}", file=sys.stderr)
+                try:
+                    obj, _ = decoder.raw_decode(line[:e.pos])
+                except json.JSONDecodeError:
+                    continue
+            entries.append(obj)
 
     if not entries:
         print("No command execution entries found")

@@ -63,8 +63,12 @@ impl ExecHistory {
             .open(&self.path)?;
 
         let json = serde_json::to_string(entry)?;
-        writeln!(file, "{}", json)?;
+        // Ensure whole record is written atomically
+        use fs2::FileExt;
+        file.lock_exclusive()?;
+        write!(file, "{}\n", json)?;
         file.sync_all()?;
+        // Unlock when file is dropped
 
         Ok(())
     }

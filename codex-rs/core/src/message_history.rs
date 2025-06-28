@@ -4,9 +4,9 @@
 //! line** so that it can be efficiently appended to and parsed with standard
 //! JSON-Lines tooling. Each record has the following schema:
 //!
-//! ````text
+//! ```text
 //! {"session_id":"<uuid>","ts":<unix_seconds>,"text":"<message>"}
-//! ````
+//! ```
 //!
 //! To minimise the chance of interleaved writes when multiple processes are
 //! appending concurrently, callers should *prepare the full line* (record +
