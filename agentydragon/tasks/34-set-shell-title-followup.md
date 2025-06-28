@@ -4,7 +4,7 @@ title = "Complete Set Shell Title to Reflect Session Status"
 status = "open"
 freeform_status = ""
 dependencies = [8] # Rationale: depends on Task 08 for initial shell title change
-last_updated = "2025-06-25T04:45:29Z"
+last_updated = "2025-06-28T02:20:56Z"
 +++
 
 > *This task is specific to codex-rs.*
@@ -12,22 +12,29 @@ last_updated = "2025-06-25T04:45:29Z"
 ## Status
 
 **General Status**: open  
-**Summary**: Follow-up to Task 08; implementation missing for core title persistence and ANSI updates.
+**Summary**: Follow-up to Task 08; implement dynamic state-based titles with ANSI persistence, LLM-based summaries, and user override support.
 
 ## Goal
 
-Implement the missing pieces from Task 08 to fully support dynamic and persistent shell title updates:
-1. Define `SessionUpdatedTitleEvent` and add a `title` field in `SessionConfiguredEvent` (core protocol).
-2. Introduce `Op::SetTitle(String)` variant and handle it in the core agent loop, persisting the title and emitting the update event.
-3. Update TUI and exec clients to listen for title events and emit ANSI escape sequences (`\x1b]0;<title>\x07`) for live terminal title changes.
-4. Restore the persisted title on session resume via `SessionConfiguredEvent`.
+Implement dynamic and persistent shell title updates with advanced features:
+
+1. Display the Codex session state (e.g., running command, sampling, idle) in the terminal title.
+2. Optionally request a concise conversation summary from a small LLM (e.g., gpt-4o-mini) and allow it to update the title based on context.
+3. Provide a `/title <custom>` slash command for users to set a custom title, while still updating the state icon automatically.
+4. Define `SessionUpdatedTitleEvent` and add a `title` field to `SessionConfiguredEvent` in the core protocol.
+5. Introduce an `Op::SetTitle(String)` variant and handle it in the core agent loop, persisting titles and emitting update events.
+6. Update TUI and exec clients to emit ANSI escape sequences (`\x1b]0;<title>\x07`) on title events and lifecycle changes.
+7. Restore the persisted title on session resume via the `SessionConfiguredEvent`.
 
 ## Acceptance Criteria
 
-- New `SessionUpdatedTitleEvent` type in `codex_core::protocol` and `title` field in `SessionConfiguredEvent`.
-- `Op::SetTitle(String)` variant in the protocol and core event handling persisted in session metadata.
-- Clients broadcast ANSI title-setting sequences on title events and lifecycle state changes.
-- Unit tests for protocol serialization and client reaction to title updates.
+- Title displays current Codex state icon (running, sampling, idle, etc.) in the terminal title.
+- Support for optional LLM-based summaries: call a small LLM to generate a conversation summary and update the title.
+- `/title <custom>` slash command for user-defined titles, with automatic state icon overlays.
+- New `SessionUpdatedTitleEvent` and added `title: String` field to `SessionConfiguredEvent` in `codex_core::protocol`.
+- `Op::SetTitle(String)` variant in the protocol and core event loop, with persisted session metadata.
+- TUI and exec clients emit ANSI escape sequences (`\x1b]0;<title>\x07`) for live title updates and restore on resume.
+- Unit and integration tests covering protocol serialization, ANSI emission, LLM summary logic, and slash-command parsing.
 
 ## Implementation
 
