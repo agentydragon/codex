@@ -128,8 +128,7 @@ def status(timings: bool):
     deps_map: dict[str, list[str]] = {}
     for tid, meta in all_meta.items():
         deps_map[tid] = [
-            d
-            for d in re.findall(r"\d+", meta.dependencies)
+            d for d in meta.dependencies
             if d in all_meta and d not in merged_ids
         ]
 
@@ -602,8 +601,7 @@ def workflow():
     merged_ids = {tid for tid, m in all_meta.items() if m.status == TaskStatus.MERGED}
     for tid, meta in all_meta.items():
         deps = [
-            d
-            for d in re.findall(r"\d+", meta.dependencies)
+            d for d in meta.dependencies
             if d in all_meta and d not in merged_ids
         ]
         deps_map[tid] = deps

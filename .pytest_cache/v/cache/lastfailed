@@ -1,5 +1,4 @@
 {
   "agentydragon/tools/manager_utils/tests/test_tasklib.py::test_save_preserves_comments": true,
-  "agentydragon/tools/manager_utils/tests/test_tasklib.py::test_save_preserves_inline_comments": true,
-  "agentydragon/tools/manager_utils/tests/test_tasklib.py": true
+  "agentydragon/tools/manager_utils/tests/test_tasklib.py::test_save_preserves_inline_comments": true
 }

@@ -67,7 +67,7 @@ class TaskMeta(BaseModel):
     title: str
     status: TaskStatus
     freeform_status: str = Field(default="")
-    dependencies: list[int] = Field(default_factory=list)
+    dependencies: list[str] = Field(default_factory=list)
     last_updated: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -77,6 +77,13 @@ def load_task(path: Path) -> (TaskMeta, str):
     if not m:
         raise ValueError(f"No TOML frontmatter in {path}")
     meta = toml.loads(m.group(1))
+    # Parse dependencies as zero-padded two-digit strings
+    if 'dependencies' in meta:
+        deps = meta['dependencies']
+        if isinstance(deps, str):
+            meta['dependencies'] = [s.zfill(2) for s in re.findall(r"\d+", deps)]
+        elif isinstance(deps, list):
+            meta['dependencies'] = [str(int(x)).zfill(2) for x in deps]
     tm = TaskMeta(**meta)
     body = text[m.end() :].lstrip("\n")
     return tm, body

@@ -65,7 +65,10 @@ def check_cycles():
         if meta.status == "merged":
             merged.add(meta.id)
         else:
-            deps_map[meta.id] = [f"{d:02d}" for d in meta.dependencies if f"{d:02d}" not in merged]
+            deps_map[meta.id] = [
+                d for d in meta.dependencies
+                if d not in merged
+            ]
 
     failures: list[list[str]] = []
     visited: set[str] = set()

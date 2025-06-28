@@ -5,16 +5,16 @@ import pytest
 
 from ..tasklib import TaskMeta, load_task, save_task
 
-	SAMPLE = """+++
-	id = "99"
-	title = "Sample Task"
-	status = "open"
-	dependencies = []
-	last_updated = "2023-01-01T12:00:00"
-	+++
-	
-	# Body here
-	"""
+SAMPLE = """+++
+id = "99"
+title = "Sample Task"
+status = "open"
+dependencies = []
+last_updated = "2023-01-01T12:00:00"
++++
+
+# Body here
+"""
 
 def test_load_and_save(tmp_path):
     md = tmp_path / '99-sample.md'
@@ -22,11 +22,11 @@ def test_load_and_save(tmp_path):
     meta, body = load_task(md)
     assert meta.id == '99'
     assert 'Body here' in body
-	meta.status = 'done'
+    meta.status = 'done'
     save_task(md, meta, body)
     text = md.read_text()
     data = toml.loads(text.split('+++')[1])
-	assert data['status'] == 'done'
+    assert data['status'] == 'done'
 
 from pydantic import ValidationError
 
