@@ -50,6 +50,11 @@ pub(crate) struct ChatComposer<'a> {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::items_after_test_module,
+    clippy::unwrap_used,
+    clippy::uninlined_format_args
+)]
 mod tests {
     use super::*;
     use crate::app_event::AppEvent;
