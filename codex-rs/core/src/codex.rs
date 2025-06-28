@@ -1282,6 +1282,10 @@ async fn handle_container_exec_with_params(
         approval_requested: false,
         approval_decision: None,
         auto_approved: false,
+        auto_denied: false,
+        auto_denied_reason: None,
+        user_approved: false,
+        user_denied: false,
         execution_started: false,
         execution_result: None,
     };
@@ -1311,6 +1315,10 @@ async fn handle_container_exec_with_params(
     // safety checks with auto-approval predicates
     let safety = match evaluate_auto_allow_predicates(&params.command, &sess.auto_allow) {
         AutoAllowVote::Deny => {
+            // Auto-denied by auto-allow predicate
+            exec_entry.auto_denied = true;
+            exec_entry.auto_denied_reason = Some("auto_allow_predicate".to_string());
+            let _ = sess.exec_history.append_entry(&exec_entry);
             return ResponseInputItem::FunctionCallOutput {
                 call_id,
                 output: crate::models::FunctionCallOutputPayload {
@@ -1358,6 +1366,15 @@ async fn handle_container_exec_with_params(
                 .await;
             let decision = rx_approve.await.unwrap_or_default();
             exec_entry.approval_decision = Some(decision.clone());
+            // Record user approval or denial
+            match decision {
+                ReviewDecision::Approved | ReviewDecision::ApprovedForSession => {
+                    exec_entry.user_approved = true;
+                }
+                ReviewDecision::Denied | ReviewDecision::Abort => {
+                    exec_entry.user_denied = true;
+                }
+            }
 
             match decision {
                 ReviewDecision::Approved => (),
@@ -1365,10 +1382,8 @@ async fn handle_container_exec_with_params(
                     sess.add_approved_command(params.command.clone());
                 }
                 ReviewDecision::Denied | ReviewDecision::Abort => {
-                    // Log the denial
-                    if let Err(e) = sess.exec_history.append_entry(&exec_entry) {
-                        warn!("Failed to log exec history: {}", e);
-                    }
+                    // Log the user denial
+                    let _ = sess.exec_history.append_entry(&exec_entry);
                     return ResponseInputItem::FunctionCallOutput {
                         call_id,
                         output: crate::models::FunctionCallOutputPayload {
@@ -1385,10 +1400,11 @@ async fn handle_container_exec_with_params(
             SandboxType::None
         }
         SafetyCheck::Reject { reason } => {
+            // Auto-denied by safety rejection
+            exec_entry.auto_denied = true;
+            exec_entry.auto_denied_reason = Some(reason.clone());
             exec_entry.approval_decision = Some(ReviewDecision::Denied);
-            if let Err(e) = sess.exec_history.append_entry(&exec_entry) {
-                warn!("Failed to log exec history: {}", e);
-            }
+            let _ = sess.exec_history.append_entry(&exec_entry);
             return ResponseInputItem::FunctionCallOutput {
                 call_id,
                 output: crate::models::FunctionCallOutputPayload {

@@ -46,6 +46,7 @@ mod login_screen;
 mod markdown;
 mod mouse_capture;
 mod scroll_event_helper;
+mod color;
 mod slash_command;
 mod status_indicator_widget;
 pub mod text_block;
@@ -54,6 +55,8 @@ mod tui;
 mod user_approval_widget;
 
 pub use cli::Cli;
+
+pub use color::parse_color;
 
 pub fn run_main(cli: Cli, codex_linux_sandbox_exe: Option<PathBuf>) -> std::io::Result<()> {
     let (sandbox_policy, approval_policy) = if cli.full_auto {

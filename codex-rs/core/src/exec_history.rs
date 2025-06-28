@@ -20,7 +20,21 @@ pub struct ExecHistoryEntry {
     pub working_dir: String,
     pub approval_requested: bool,
     pub approval_decision: Option<ReviewDecision>,
+    #[serde(default)]
     pub auto_approved: bool,
+    /// Automatically denied by auto-allow predicates or safety rejection.
+    #[serde(default)]
+    pub auto_denied: bool,
+    /// Reason for auto-denial (e.g. predicate name or rejection reason).
+    #[serde(default)]
+    pub auto_denied_reason: Option<String>,
+    /// User approved via prompt.
+    #[serde(default)]
+    pub user_approved: bool,
+    /// User denied via prompt.
+    #[serde(default)]
+    pub user_denied: bool,
+    #[serde(default)]
     pub execution_started: bool,
     pub execution_result: Option<ExecResult>,
 }
@@ -164,6 +178,10 @@ mod tests {
             approval_requested: true,
             approval_decision: Some(ReviewDecision::Approved),
             auto_approved: false,
+            auto_denied: false,
+            auto_denied_reason: None,
+            user_approved: false,
+            user_denied: false,
             execution_started: true,
             execution_result: Some(ExecResult {
                 exit_code: Some(0),
