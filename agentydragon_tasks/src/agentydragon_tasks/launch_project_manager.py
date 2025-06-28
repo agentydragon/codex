@@ -7,7 +7,7 @@ import sys
 
 import click
 
-from agentydragon_tasks.agentydragon_tasks.common import repo_root
+from agentydragon_tasks.common import repo_root
 
 
 @click.command()

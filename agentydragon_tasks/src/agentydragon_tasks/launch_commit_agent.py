@@ -8,7 +8,7 @@ from pathlib import Path
 
 import click
 
-from agentydragon_tasks.agentydragon_tasks.common import (
+from agentydragon_tasks.common import (
     repo_root,
     tasks_dir,
     worktrees_dir,

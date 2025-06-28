@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "agentydragon_tasks"
 version = "0.1.0"
 description = "AgentDragon task management tools"
-readme = "agentydragon_tasks/README.md"
+readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     "click",
@@ -20,9 +20,9 @@ dev = [
 ]
 
 [project.scripts]
-agentydragon-create-task-worktree = "agentydragon_tasks.agentydragon_tasks.create_task_worktree:main"
-agentydragon-check-tasks = "agentydragon_tasks.agentydragon_tasks.check_tasks:main"
-agentydragon-launch-commit-agent = "agentydragon_tasks.agentydragon_tasks.launch_commit_agent:main"
-agentydragon-launch-project-manager = "agentydragon_tasks.agentydragon_tasks.launch_project_manager:main"
-agentydragon-task = "agentydragon_tasks.agentydragon_tasks.task:cli"
-tasks = "agentydragon_tasks.agentydragon_tasks.task:cli"
+agentydragon-create-task-worktree = "agentydragon_tasks.create_task_worktree:main"
+agentydragon-check-tasks = "agentydragon_tasks.check_tasks:main"
+agentydragon-launch-commit-agent = "agentydragon_tasks.launch_commit_agent:main"
+agentydragon-launch-project-manager = "agentydragon_tasks.launch_project_manager:main"
+agentydragon-task = "agentydragon_tasks.task:cli"
+tasks = "agentydragon_tasks.task:cli"
