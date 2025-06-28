@@ -3,7 +3,7 @@ id = "43"
 title = "Runtime switch to enable/disable container support"
 status = "open"
 freeform_status = ""
-dependencies = ""
+dependencies = []
 last_updated = "2025-06-26T06:30:00Z"
 +++
 

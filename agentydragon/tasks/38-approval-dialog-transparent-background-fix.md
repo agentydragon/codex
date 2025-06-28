@@ -3,7 +3,7 @@ id = "38"
 title = "Fix Approval Dialog Transparent Background"
 status = "open"
 freeform_status = ""
-dependencies = ""
+dependencies = []
 last_updated = "2025-06-26T17:52:40.329780"
 +++
 

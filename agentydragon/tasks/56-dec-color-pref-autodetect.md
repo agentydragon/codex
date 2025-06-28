@@ -3,7 +3,7 @@ id = "56"
 title = "Support DEC color-preference autodetection"
 status = "open"
 freeform_status = ""
-dependencies = ""
+dependencies = []
 last_updated = "2024-06-11T00:00:00Z"
 +++
 

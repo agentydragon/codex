@@ -3,7 +3,7 @@ id = "22"
 title = "Message Separation and Sender-Content Layout Options"
 status = "done"
 freeform_status = ""
-dependencies = "" # No prerequisites
+dependencies = [] # No prerequisites
 last_updated = "2025-06-25T11:05:55.000000"
 +++
 

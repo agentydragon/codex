@@ -9,7 +9,7 @@ from ..tasklib import TaskMeta, load_task, save_task
 	id = "99"
 	title = "Sample Task"
 	status = "open"
-	dependencies = ""
+	dependencies = []
 	last_updated = "2023-01-01T12:00:00"
 	+++
 	

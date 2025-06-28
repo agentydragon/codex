@@ -62,11 +62,10 @@ def check_cycles():
     deps_map: dict[str, list[str]] = {}
     for md in iter_task_markdown():
         meta, _ = load_task(md)
-        if meta.status == "Merged":
+        if meta.status == "merged":
             merged.add(meta.id)
         else:
-            deps = [d for d in re.findall(r"\d+", meta.dependencies)]
-            deps_map[meta.id] = [d for d in deps if d not in merged]
+            deps_map[meta.id] = [f"{d:02d}" for d in meta.dependencies if f"{d:02d}" not in merged]
 
     failures: list[list[str]] = []
     visited: set[str] = set()

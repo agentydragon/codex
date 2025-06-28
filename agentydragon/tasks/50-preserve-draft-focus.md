@@ -3,7 +3,7 @@ id = "50"
 title = "Preserve draft focus during approval dialog"
 status = "open"
 freeform_status = ""
-dependencies = "26"
+dependencies = [26]
 last_updated = "2025-06-26T06:30:00Z"
 +++
 

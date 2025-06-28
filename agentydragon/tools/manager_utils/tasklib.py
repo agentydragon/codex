@@ -67,7 +67,7 @@ class TaskMeta(BaseModel):
     title: str
     status: TaskStatus
     freeform_status: str = Field(default="")
-    dependencies: str = Field(default="")
+    dependencies: list[int] = Field(default_factory=list)
     last_updated: datetime = Field(default_factory=datetime.utcnow)
 
 

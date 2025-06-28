@@ -3,7 +3,7 @@ id = "53"
 title = "Support per-command skip container hook"
 status = "open"
 freeform_status = ""
-dependencies = "43"
+dependencies = [43]
 last_updated = "2025-06-26T06:30:00Z"
 +++
 

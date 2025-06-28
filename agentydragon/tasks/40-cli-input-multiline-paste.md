@@ -3,7 +3,7 @@ id = "40"
 title = "Support Multiline Paste in codex-rs CLI Input Window"
 status = "open"
 freeform_status = ""
-dependencies = ""
+dependencies = []
 last_updated = "2025-06-26T06:47:01.458158"
 +++
 
