@@ -566,6 +566,15 @@ More broadly we welcome contributions - whether you are opening your very first 
 - We use **Vitest** for unit tests, **ESLint** + **Prettier** for style, and **TypeScript** for type-checking.
 - Before pushing, run the full test/type/lint suite:
 
+#### Python dependencies
+
+This project includes several Python CLI tools for managing tasks. To use them,
+install the required Python packages with:
+
+```bash
+pip install -r requirements.txt
+```
+
 #### Interactive orchestrator workflow
 
 - Use `agentydragon_task.py workflow` to interactively:
