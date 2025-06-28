@@ -16,18 +16,19 @@ last_updated = "2025-06-26T17:52:40.329780"
 
 ## Goal
 
-Ensure the approval dialog is drawn with a solid background color (matching the dialog border or theming) so that any underlying text does not bleed through.
+Ensure the approval dialog is drawn with a solid background color from the existing UI theming configuration so that any underlying text does not bleed through.
 
 ## Acceptance Criteria
 
 - Approval dialogs block underlying prompt text (solid background).
-- Existing unit/integration tests validate dialog visual rendering.
+- Background color is configurable via existing UI theming/config.
+- Existing unit/integration tests validate dialog visual rendering and color configurability.
 
 ## Implementation
 
-- Modify `render_ref` in `codex-rs/tui/src/user_approval_widget.rs` to fill the dialog `area` with a `DarkGray` background before drawing border and content.
-- Use nested loops over `area` to call `buf[(col, row)].set_bg(Color::DarkGray)` for each cell.
-- Add unit test `render_approval_dialog_fills_background` to prefill a buffer with a sentinel background and assert all cells in the dialog region are recolored.
+- Modify `render_ref` in `codex-rs/tui/src/user_approval_widget.rs` to fill the dialog `area` with the configured approval-dialog background color (matching other UI theming), defaulting to `DarkGray` if unspecified, before drawing border and content.
+- Use nested loops over `area` to call `buf[(col, row)].set_bg(config.approval_dialog_background_color.unwrap_or(Color::DarkGray))` for each cell.
+- Add unit test `render_approval_dialog_fills_background` to prefill a buffer with a sentinel background color, assert all cells in the dialog region are recolored, and verify the configured color is applied.
 
 ## Notes
 
