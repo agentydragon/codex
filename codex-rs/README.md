@@ -83,26 +83,83 @@ Customize individual TUI colors under `[tui.colors]` in `~/.codex/config.toml`:
 
 ```toml
 [tui.colors]
-context-high = "Green"
-context-medium = "Yellow"
-context-low = "Red"
-scroll-thumb-active = "LightYellow"
+# Context bar (chat composer)
+context-high         = "Green"      # >40% context left
+context-medium       = "Yellow"     # 25–40% context left
+context-low          = "Red"        # ≤25% context left
+
+# Scrollbar styling
+scroll-thumb-active   = "LightYellow"
 scroll-thumb-inactive = "Gray"
-scroll-track = "DarkGray"
-popup-fg = "LightBlue"
-popup-bg = "DarkGray"
-exec-success = "Green"
-exec-failure = "Red"
-exec-timing = "Gray"
-diff-add = "Green"
-diff-remove = "Red"
-diff-modify = "Yellow"
-diff-other = "Cyan"
+scroll-track          = "DarkGray"
+
+# Pop-up dialogs (commands / approval)
+popup-fg             = "LightBlue"
+popup-bg             = "DarkGray"
+
+# Composer error border
+composer-error-border = "Red"
+
+# Conversation history border/title
+history-border        = "Cyan"
+
+# Git‑warning modal border
+git-warning-border    = "Red"
+
+# Status indicator text
+status-text           = "White"
+
+# Approval dialog
+approval-select-fg    = "Blue"
+approval-error        = "Red"
+
+# Patch & diff markers
+patch-header          = "Cyan"
+assistant-label       = "Magenta"
+hunk-marker           = "Magenta"
+
+# Exec‑command annotations
+exec-success          = "Green"
+exec-failure          = "Red"
+exec-timing           = "Gray"
+
+# Diff summary (A, D, M, R/C)
+diff-add              = "Green"
+diff-remove           = "Red"
+diff-modify           = "Yellow"
+diff-other            = "Cyan"
+
+# MCP‑tool call headers
+tool-header           = "Blue"
+tool-args             = "Gray"
+
+# Exec‑history view rows & borders
+history-approved      = "Green"
+history-denied        = "Red"
+history-pending       = "Yellow"
+history-session       = "Cyan"
+history-aborted       = "Magenta"
+history-rejected      = "Red"
+history-not-run       = "DarkGray"
+history-error         = "Red"
+history-success       = "Green"
+history-failed        = "Red"
+history-unknown       = "DarkGray"
+history-running       = "Blue"
+history-na            = "DarkGray"
+history-footer-bg     = "DarkGray"
+
+# Dimmed / secondary text
+dim-text              = "Gray"
+
+# Global reset fallback
+reset                 = "Reset"
 ```
 
-Supported color names (case-insensitive): Black, Red, Green, Yellow, Blue,
-Magenta, Cyan, Gray, DarkGray, LightRed, LightGreen, LightYellow,
-LightBlue, LightMagenta, LightCyan, White, Reset.
+Supported color names:
+Black, Red, Green, Yellow, Blue, Magenta, Cyan, Gray,
+DarkGray, LightRed, LightGreen, LightYellow, LightBlue,
+LightMagenta, LightCyan, White, Reset.
 
 ### Model Context Protocol Support
 
