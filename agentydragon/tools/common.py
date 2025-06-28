@@ -3,6 +3,7 @@
 common.py: Shared utilities for agentydragon tooling scripts.
 """
 import subprocess
+import click
 from pathlib import Path
 
 
@@ -52,3 +53,24 @@ def sandbox_flags_for_worktree(worktree: Path) -> list[str]:
         "-s",
         f"disk-write-folder={gitdir}",
     ]
+
+
+def run_codex_exec(
+    worktree: Path, prompt: str, full_auto: bool = True, exec_mode: bool = True
+) -> None:
+    """Run a Codex session in the given worktree with the specified mode and prompt."""
+    cmd = ["codex"]
+    if full_auto:
+        cmd.append("--full-auto")
+    if exec_mode:
+        cmd.append("exec")
+    cmd += ["--cd", str(worktree)]
+    cmd += sandbox_flags_for_worktree(worktree)
+    click.echo(f"Running Codex: {' '.join(cmd)}")
+    subprocess.check_call(cmd + [prompt])
+
+
+def run_git(args: list[str], cwd: Path | None = None) -> None:
+    """Run a git command at the repo root or specified directory."""
+    cwd_path = cwd or repo_root()
+    subprocess.check_call(["git", *args], cwd=str(cwd_path))

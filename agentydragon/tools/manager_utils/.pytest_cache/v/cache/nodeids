@@ -1,4 +1,0 @@
-[
-  "tests/test_tasklib.py::test_load_and_save",
-  "tests/test_tasklib.py::test_meta_model_validation"
-]

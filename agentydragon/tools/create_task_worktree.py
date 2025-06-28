@@ -2,22 +2,20 @@
 """
 create_task_worktree.py: Create or reuse a git worktree for a specific task and optionally launch a Developer Codex agent.
 """
-import os
-import subprocess
-import sys
 import re
 import shlex
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import click
-
 from common import (
     repo_root,
+    resolve_slug,
     tasks_dir,
     worktrees_dir,
-    resolve_slug,
-    sandbox_flags_for_worktree,
+    run_codex_exec,
 )
 
 
@@ -155,15 +153,16 @@ def main(
         run(["git", "worktree", "add", "--no-checkout", str(wt_path), branch])
         src = str(repo_root())
         dst = str(wt_path)
-        # Hydrate the worktree filesystem via CoW copy: prefer cp with reflink, fallback to rsync
         # Hydrate via CoW copy if possible, excluding the .worktrees directory; fallback to rsync
         cp_cmd = None
         if shutil.which("cp") and sys.platform != "darwin":
             # Copy all top-level entries except .worktrees and .git to avoid recursion and copying VCS metadata
             base = Path(src)
-            entries = [str(base / p.name)
-                       for p in base.iterdir()
-                       if p.name not in (".worktrees", ".git")]
+            entries = [
+                str(base / p.name)
+                for p in base.iterdir()
+                if p.name not in (".worktrees", ".git")
+            ]
             cp_cmd = ["cp", "--archive", "--reflink=auto"] + entries + [dst]
             try:
                 run(cp_cmd)
@@ -198,6 +197,9 @@ def main(
     else:
         click.echo(f"Worktree already exists at {wt_path}")
 
+    git_path = wt_path / ".git"
+    assert git_path.exists(), f"New worktree doesn't have .git? {git_path}"
+
     if not agent:
         return
 
@@ -218,28 +220,13 @@ def main(
                 "Warning: pre-commit not installed; skipping presubmit checks", err=True
             )
 
-    # Determine Codex invocation and prompt based on mode
-    click.echo(
-        f"Launching {'Rebase' if rebase_mode else 'Developer'} Codex agent for task {slug} in sandboxed worktree"
-    )
-    # Use codex's built-in --cd flag instead of changing working dir
-    cd_arg = ["--cd", str(wt_path)]
-    if shell_mode:
-        cmd = ["codex"] + cd_arg
-    elif interactive:
-        cmd = ["codex", "--full-auto"] + cd_arg
-    else:
-        cmd = ["codex", "--full-auto", "exec"] + cd_arg
-
-    # Grant sandbox access so Codex can read/write both worktree and its Git metadata
-    cmd += sandbox_flags_for_worktree(wt_path)
-
-    # Assemble base prompt
-    prompt_name = "rebase.md" if rebase_mode else "developer.md"
-    base_prompt = (repo_root() / "agentydragon" / "prompts" / prompt_name).read_text(
-        encoding="utf-8"
-    )
-    # Contextual task or branch reference
+    # Launch Codex agent (exec or interactive) in the sandboxed worktree
+    base_prompt = (
+        repo_root()
+        / "agentydragon"
+        / "prompts"
+        / ("rebase.md" if rebase_mode else "developer.md")
+    ).read_text(encoding="utf-8")
     if rebase_mode:
         context = f"You are on branch '{branch}'. Below is context to perform a rebase onto 'agentydragon'."
     else:
@@ -251,7 +238,12 @@ def main(
             f'You are working on task {slug}: "{title}". '
             f"See the full specification in {md_path}."
         )
-    run(cmd + [base_prompt + "\n\n" + context])
+    run_codex_exec(
+        wt_path,
+        base_prompt + "\n\n" + context,
+        full_auto=not shell_mode,
+        exec_mode=(not interactive and not shell_mode),
+    )
 
     # Auto-commit when Developer agent finishes and task status is Done
     if not rebase_mode and not interactive and not shell_mode:
@@ -261,7 +253,9 @@ def main(
         if re.search(r'status\s*=\s*"Done"', status_txt):
             click.echo(f"Status for {slug} is Done; running Commit agent...")
             script = Path(__file__).resolve().parent / "launch_commit_agent.py"
-            subprocess.check_call([sys.executable, str(script), slug], cwd=str(repo_root()))
+            subprocess.check_call(
+                [sys.executable, str(script), slug], cwd=str(repo_root())
+            )
 
 
 if __name__ == "__main__":

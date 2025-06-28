@@ -2,47 +2,40 @@
 CLI for managing agentydragon tasks: status, set-status, set-deps, dispose, launch.
 """
 
+import os
+import shlex
+import shutil
 import subprocess
-import re
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
-import shlex
 
 import click
-import time
-import os
-import sys
+import pygit2
+from tabulate import tabulate
 from tasklib import (
+    TaskMeta,
+    TaskStatus,
+    find_task_file,
+    list_task_files,
     load_task,
     repo_root,
     save_task,
     task_dir,
     worktree_dir,
-    TaskMeta,
-    TaskStatus,
-    find_task_file,
-    list_task_files,
 )
-import pygit2
-import shutil
 
 # Enable in-process invocation of tool CLIs by adding their directory to sys.path
 sys.path.insert(0, str(repo_root() / "agentydragon" / "tools"))
-from launch_commit_agent import main as commit_cmd
-from create_task_worktree import main as create_task_worktree_cmd
-from common import sandbox_flags_for_worktree, resolve_slug, worktrees_dir
-
+from common import (
+    resolve_slug,
+    run_codex_exec,
+    run_git,
+    worktrees_dir,
+)
 
 # Shared helper to invoke Codex exec with a prompt in a worktree
-def _run_codex_exec(prompt: str, worktree: Path) -> None:
-    """Run a non-interactive Codex session (exec) with the given prompt in worktree."""
-    cmd = ["codex", "--cd", str(worktree), "--full-auto", "exec"]
-    # Grant sandbox access so Codex can read/write both worktree and its Git metadata
-    cmd += sandbox_flags_for_worktree(worktree)
-    click.echo(f"Running Codex exec: {' '.join(cmd)}")
-    # Pass the prompt as CLI argument rather than via stdin
-    subprocess.check_call(cmd + [prompt])
 
 
 def _launch_cmd_in_tmux(label: str, cmd: list[str], cwd: Path) -> None:
@@ -107,11 +100,6 @@ STATUS_COLORS: dict[str, dict[str, str]] = {
     TaskStatus.MERGED.value: {"fg": "blue"},
 }
 
-try:
-    from tabulate import tabulate
-except ImportError:
-    tabulate = None
-
 
 @click.group()
 def cli():
@@ -124,15 +112,12 @@ def cli():
     "--timings", is_flag=True, help="Print timing breakdown of status execution"
 )
 def status(timings: bool):
-    """Show a table of task id, title, status, dependencies, last_updated.
-
-    If tabulate is installed, render as GitHub-flavored Markdown table;
-    otherwise fallback to fixed-width formatting.
-    """
+    """Show a table of task id, title, status, dependencies, last_updated."""
     start = time.monotonic() if timings else None
     # Load all task metadata, excluding worktrees for speed; include .done explicitly
-    all_meta: dict[str, TaskMeta] = {}
-    path_map: dict[str, Path] = {}
+    all_meta: dict[str, TaskMeta]
+    path_map: dict[str, Path]
+    all_meta, path_map = {}, {}
     for md in list_task_files():
         if md.name in ("task-template.md",) or md.name.endswith("-plan.md"):
             continue
@@ -341,13 +326,7 @@ def status(timings: bool):
     if timings:
         t4 = time.monotonic()
         print(f"Built table rows in {t4 - t3:.3f}s")
-    if tabulate:
-        print(tabulate(rows, headers=headers, tablefmt="github"))
-    else:
-        fmt = "{:>2}  {:<30}  {:<12}  {:<20}  {:<16}  {:<40}  {:<10}"
-        print(fmt.format(*headers))
-        for r in rows:
-            print(fmt.format(*r))
+    print(tabulate(rows, headers=headers, tablefmt="github"))
 
     # summary of fully merged tasks (no branch, no worktree)
     if merged_tasks:
@@ -468,8 +447,7 @@ def dispose(task_id):
             subprocess.run(["git", "worktree", "remove", str(rel), "--force"], cwd=root)
             if wt_dir.exists():
                 shutil.rmtree(wt_dir)
-        else:
-            print(f"No worktrees matching {g} in {wt_base}")
+        print(f"No worktrees matching {g} in {wt_base}")
         # prune any stale worktree entries
         subprocess.run(["git", "worktree", "prune"], cwd=root)
         # Delete any matching branches
@@ -559,8 +537,8 @@ def merge(task_id):
     repo = repo_root()
     branch = f"agentydragon-{slug}"
     click.echo(f"Merging {branch} into agentydragon")
-    subprocess.check_call(["git", "checkout", "agentydragon"], cwd=repo)
-    subprocess.check_call(["git", "merge", "--no-ff", branch], cwd=repo)
+    run_git(["checkout", "agentydragon"], cwd=repo)
+    run_git(["merge", "--no-ff", branch], cwd=repo)
     if click.confirm("Dispose worktree and branch?", default=True):
         ctx = click.get_current_context()
         ctx.invoke(dispose, task_id=(task_id,))
@@ -662,7 +640,7 @@ def workflow():
                     selected.discard(token[1:])
             click.echo("")
             for tid in dirty:
-                prefix = "[*]" if tid in selected else "  *"
+                prefix = "[*]" if tid in selected else " * "
                 click.echo(f" {prefix} {tid} - {all_meta[tid].title}")
             click.echo("")
         if selected:
@@ -733,20 +711,18 @@ def workflow():
             ):
                 # Invoke merge-conflict-resolution agent in the task worktree
                 task_wt = worktree_dir() / path_map[tid].stem
-                prompt_path = (
-                    repo_root() / "agentydragon" / "prompts" / "merge-conflict-fix.md"
-                )
                 click.echo(
                     f"Launching Merge Conflict Resolution agent for {bname} (cwd={task_wt})"
                 )
-                with open(prompt_path, "r") as f:
-                    prompt = f.read()
-                prompt += (
-                    f"\nBranch: {bname}\n"
+                prompt_path = (
+                    repo_root() / "agentydragon" / "prompts" / "merge-conflict-fix.md"
+                )
+                prompt = (
+                    f"{prompt_path.read_text()}\nBranch: {bname}\n"
                     "Please resolve all merge conflicts so that this branch can be cleanly "
                     "merged into 'agentydragon'."
                 )
-                _run_codex_exec(prompt, task_wt)
+                run_codex_exec(task_wt, prompt, full_auto=True, exec_mode=True)
                 # Re-run merge-tree to verify conflicts resolved
                 try:
                     base = subprocess.check_output(
@@ -776,8 +752,8 @@ def workflow():
         if not click.confirm(f"Merge branch {bname} into agentydragon?", default=True):
             continue
         click.echo(f"Merging {bname} into agentydragon")
-        subprocess.check_call(["git", "checkout", "agentydragon"], cwd=root)
-        subprocess.check_call(["git", "merge", "--no-ff", bname], cwd=root)
+        run_git(["checkout", "agentydragon"], cwd=root)
+        run_git(["merge", "--no-ff", bname], cwd=root)
     # 3. Dispose worktrees for tasks with no worktree (not started) or merged & clean worktree
     for tid, _ in ready:
         meta = all_meta[tid]
@@ -802,15 +778,12 @@ def workflow():
     if need_input:
         click.echo(f"Tasks needing input: {' '.join(need_input)}")
     # 4.5 Running tmux sessions and codex processes
-    try:
-        sessions = subprocess.run(
-            ["tmux", "ls"], capture_output=True, text=True
-        ).stdout.strip()
-        if sessions:
-            click.echo("\nActive tmux sessions:")
-            click.echo(sessions)
-    except FileNotFoundError:
-        pass
+    sessions = subprocess.run(
+        ["tmux", "ls"], capture_output=True, text=True
+    ).stdout.strip()
+    if sessions:
+        click.echo("\nActive tmux sessions:")
+        click.echo(sessions)
     procs = subprocess.run(
         ["pgrep", "-fl", "codex"], capture_output=True, text=True
     ).stdout.strip()

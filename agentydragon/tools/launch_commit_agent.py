@@ -2,7 +2,6 @@
 """
 launch_commit_agent.py: Run the non-interactive Commit agent for completed tasks.
 """
-import os
 import subprocess
 import sys
 from pathlib import Path
