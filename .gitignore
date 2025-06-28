@@ -1,0 +1,98 @@
+# deps
+# Node.js dependencies
+node_modules
+.pnpm-store
+.pnpm-debug.log
+
+# Keep pnpm-lock.yaml
+!pnpm-lock.yaml
+
+# build
+dist/
+build/
+out/
+storybook-static/
+
+# ignore README for publishing
+codex-cli/README.md
+
+# ignore Nix derivation results
+result
+
+# editor
+.vscode/
+.idea/
+.history/
+.zed/
+*.swp
+*~
+
+# cli tools
+CLAUDE.md
+.claude/
+
+# caches
+.cache/
+.turbo/
+.parcel-cache/
+.eslintcache
+.nyc_output/
+.jest/
+*.tsbuildinfo
+
+# Python caches and test artifacts
+__pycache__/
+.pytest_cache/
+
+# Local benchmarks
+.benchmarks/
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env
+.env*
+
+# oaipkg import cache
+oaipkg/
+ 
+# Ignore task worktree directories created by create-task-worktree.sh
+agentydragon/tasks/.worktrees/
+!.env.example
+
+# package
+*.tgz
+
+# ci
+.vercel/
+.netlify/
+
+# patches
+apply_patch/
+
+# coverage
+coverage/
+
+# os
+.DS_Store
+Thumbs.db
+Icon?
+.Spotlight-V100/
+
+# Unwanted package managers
+.yarn/
+yarn.lock
+
+# release
+package.json-e
+session.ts-e
+CHANGELOG.ignore.md
+
+# nix related
+.direnv
+.envrc
+
+codex-rs/target

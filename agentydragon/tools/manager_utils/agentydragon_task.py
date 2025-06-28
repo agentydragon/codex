@@ -500,6 +500,35 @@ def shell(task_id):
 
 
 @cli.command()
+@click.argument("task_id")
+def merge(task_id):
+    """Merge branch for TASK_ID into agentydragon if worktree is clean, then optionally dispose."""
+    try:
+        slug = resolve_slug(task_id)
+    except Exception as e:
+        click.echo(str(e), err=True)
+        sys.exit(1)
+    wt = worktrees_dir() / slug
+    if not wt.exists():
+        click.echo(f"No worktree for task {task_id}", err=True)
+        sys.exit(1)
+    status = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=wt, capture_output=True, text=True
+    ).stdout.strip()
+    if status:
+        click.echo(f"Worktree {wt} has uncommitted changes", err=True)
+        sys.exit(1)
+    repo = repo_root()
+    branch = f"agentydragon-{slug}"
+    click.echo(f"Merging {branch} into agentydragon")
+    subprocess.check_call(["git", "checkout", "agentydragon"], cwd=repo)
+    subprocess.check_call(["git", "merge", "--no-ff", branch], cwd=repo)
+    if click.confirm("Dispose worktree and branch?", default=True):
+        ctx = click.get_current_context()
+        ctx.invoke(dispose, task_id=(task_id,))
+
+
+@cli.command()
 def workflow():
     """Interactive workflow: commit dirty worktrees, merge ready branches, dispose, and report task statuses."""
     root = repo_root()
