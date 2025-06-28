@@ -1,7 +1,0 @@
-[
-  "agentydragon/tools/manager_utils/tests/test_tasklib.py::test_load_and_save",
-  "agentydragon/tools/manager_utils/tests/test_tasklib.py::test_load_task_invalid_status",
-  "agentydragon/tools/manager_utils/tests/test_tasklib.py::test_meta_model_validation",
-  "agentydragon/tools/manager_utils/tests/test_tasklib.py::test_save_preserves_comments",
-  "agentydragon/tools/manager_utils/tests/test_tasklib.py::test_save_preserves_inline_comments"
-]

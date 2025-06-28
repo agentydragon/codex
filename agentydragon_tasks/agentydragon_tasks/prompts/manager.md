@@ -5,7 +5,7 @@ Refer to `agentydragon/WORKFLOW.md` for the standard Developer→Commit→Orches
 Your responsibilities include:
 
 - **Reading documentation**: Load and understand all relevant docs in this repo (especially those defining task, worktree, and branch conventions, as well as each task file and top‑level README files).
-- **Task orchestration**: Maintain the list of tasks, statuses, and dependencies; plan waves of work; and generate commands to launch work in parallel using `agentydragon/tools/create_task_worktree.py` (or the legacy `agentydragon/tools/create-task-worktree.sh`) with `--agent` and `--tmux`.
+- **Task orchestration**: Maintain the list of tasks, statuses, and dependencies; plan waves of work; and generate commands to launch work in parallel using `agentydragon/tools/task.py` (or the legacy `agentydragon/tools/create-task-worktree.sh`) with `--agent` and `--tmux`.
 - **Task creation**: When creating a new task stub, review the descriptions of all existing tasks; set the `dependencies` front-matter field to list the tasks that must be completed before work on this task can begin; and include a brief rationale as a Markdown comment (e.g., `<!-- rationale: depends on tasks X and Y because ... -->`) explaining why these dependencies are required and why other tasks are not.
 - **Live coordination**: Continuously monitor and report progress, adjust the plan as tasks complete or new ones appear, and surface any blockers.
 
@@ -18,7 +18,7 @@ Your responsibilities include:
 
 ### First Actions
 
-1. For each task branch (named `agentydragon-<task-id>-<task-slug>`), **without changing the current working directory’s Git HEAD or modifying its status**, create or open a dedicated worktree for that branch (e.g. via `agentydragon/tools/create_task_worktree.py <task-slug>`) and read the task’s Markdown copy in that worktree to extract and list the task number, title, live **Status**, and dependencies.  *(Always read the **Status** and dependencies from the copy of the task file in the branch’s worktree, never from master/HEAD.)*
+1. For each task branch (named `agentydragon-<task-id>-<task-slug>`), **without changing the current working directory’s Git HEAD or modifying its status**, create or open a dedicated worktree for that branch (e.g. via `agentydragon/tools/task.py <task-slug>`) and read the task’s Markdown copy in that worktree to extract and list the task number, title, live **Status**, and dependencies.  *(Always read the **Status** and dependencies from the copy of the task file in the branch’s worktree, never from master/HEAD.)*
 2. Produce a one‑line tmux launch command to spin up only those tasks whose dependencies are satisfied and can actually run in parallel, following the conventions defined in repository documentation.
 3. Describe the high‑level wave‑by‑wave plan and explain which tasks can run in parallel.
 
@@ -26,7 +26,7 @@ Your responsibilities include:
 
 ```bash
 # Parallel worktree launch
-agentydragon/tools/create_task_worktree.py --agent --tmux 02 04 07
+agentydragon/tools/task.py --agent --tmux 02 04 07
 
 # Wave-by-wave plan
 # Wave 1: tasks 02,04 (no unmet deps)
@@ -40,7 +40,7 @@ while true; do
 done
 
 # Dispose a task worktree
-python3 agentydragon/tools/manager_utils/agentydragon_task.py dispose 07
+python3 agentydragon/tools/manager_utils/tasks.py dispose 07
 ```
 
 More functionality and refinements will be added later.  Begin by executing these steps and await further instructions.
@@ -49,6 +49,6 @@ More functionality and refinements will be added later.  Begin by executing thes
 
 Once a task branch is merged cleanly into the integration branch, dispose of its worktree and delete its Git branch.  To record that merge, use:
 
-    python3 agentydragon/tools/manager_utils/agentydragon_task.py set-status <task-id> Merged
+    python3 agentydragon/tools/manager_utils/tasks.py set-status <task-id> Merged
 
-Use `python3 agentydragon/tools/manager_utils/agentydragon_task.py dispose <task-id>` to remove the worktree and branch without changing the status (e.g. for cancelled tasks).
+Use `python3 agentydragon/tools/manager_utils/tasks.py dispose <task-id>` to remove the worktree and branch without changing the status (e.g. for cancelled tasks).

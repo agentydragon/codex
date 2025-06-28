@@ -156,7 +156,9 @@ def main(
         # Hydrate via CoW copy if possible, excluding the .worktrees directory; fallback to rsync
         cp_cmd = None
         if shutil.which("cp") and sys.platform != "darwin":
-            # Copy all top-level entries except .worktrees and .git to avoid recursion and copying VCS metadata
+            # Copy all top-level entries except .worktrees and .git to avoid recursion and copying VCS metadata.
+            # Note: in a git worktree, .git is a gitfile (not a directory) created by 'git worktree add'
+            # that points to the main repo's worktrees metadata, so we skip it to preserve the link.
             base = Path(src)
             entries = [
                 str(base / p.name)

@@ -846,12 +846,14 @@ def workflow():
             m.id for m in sorted(all_meta.values(), key=lambda m: path_map[m.id].name)
         ]
 
-    # 6. Report task statuses with color
+    # 6. Report task statuses grouped by status with color
     click.echo("\nTask statuses:")
+    status_map: dict[str, list[str]] = {}
     for tid in sorted_ids:
-        meta = all_meta[tid]
-        style_args = STATUS_COLORS.get(meta.status.value, {})
-        click.echo(click.style(f"  * {tid}: {meta.status.value}", **style_args))
+        status_map.setdefault(all_meta[tid].status.value, []).append(tid)
+    for status, tids in status_map.items():
+        style_args = STATUS_COLORS.get(status, {})
+        click.echo(click.style(f"{status}: {' '.join(tids)}", **style_args))
 
     # Print timing for print/table phase and total
     # timings not supported for workflow
