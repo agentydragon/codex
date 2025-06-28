@@ -31,6 +31,7 @@ use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::exec_command::relativize_to_home;
 use crate::exec_command::strip_bash_lc_and_escape;
+use crate::parse_color;
 
 /// Request coming from the agent that needs user approval.
 pub(crate) enum ApprovalRequest {
@@ -141,6 +142,10 @@ pub(crate) struct UserApprovalWidget<'a> {
     /// Set to `true` once a decision has been sent – the parent view can then
     /// remove this widget from its queue.
     done: bool,
+    /// Style for selected option prefix and text.
+    select_style: Style,
+    /// Background color for the dialog.
+    bg_color: Color,
 }
 
 // Number of lines automatically added by ratatui’s [`Block`] when
@@ -148,7 +153,13 @@ pub(crate) struct UserApprovalWidget<'a> {
 const BORDER_LINES: u16 = 2;
 
 impl UserApprovalWidget<'_> {
-    pub(crate) fn new(approval_request: ApprovalRequest, app_event_tx: AppEventSender) -> Self {
+    pub(crate) fn new(
+        approval_request: ApprovalRequest,
+        app_event_tx: AppEventSender,
+        colors: codex_core::config_types::Colors,
+    ) -> Self {
+        let select_style = Style::new().fg(parse_color(&colors.approval_select_fg));
+        let bg_color = parse_color(&colors.popup_bg);
         let input = Input::default();
         let confirmation_prompt = match &approval_request {
             ApprovalRequest::Exec {
@@ -214,6 +225,8 @@ impl UserApprovalWidget<'_> {
             input,
             mode: Mode::Select,
             done: false,
+            select_style,
+            bg_color,
         }
     }
 
@@ -350,7 +363,6 @@ impl UserApprovalWidget<'_> {
 }
 
 const PLAIN: Style = Style::new();
-const BLUE_FG: Style = Style::new().fg(Color::Blue);
 
 impl WidgetRef for &UserApprovalWidget<'_> {
     fn render_ref(&self, area: Rect, buf: &mut Buffer) {
@@ -395,7 +407,7 @@ impl WidgetRef for &UserApprovalWidget<'_> {
                             opt.label.to_string()
                         };
                         let (prefix, style) = if idx == self.selected_option {
-                            ("▶", BLUE_FG)
+                            ("▶", self.select_style)
                         } else {
                             (" ", PLAIN)
                         };
@@ -414,7 +426,7 @@ impl WidgetRef for &UserApprovalWidget<'_> {
         // Fill the entire dialog area with a solid background to block underlying text.
         for row in area.y..area.y + area.height {
             for col in area.x..area.x + area.width {
-                buf[(col, row)].set_bg(Color::DarkGray);
+                buf[(col, row)].set_bg(self.bg_color);
             }
         }
         outer.render(area, buf);
@@ -447,6 +459,7 @@ mod tests {
                 reason: None,
             },
             app_event_tx.clone(),
+            Default::default(),
         );
         widget.mode = Mode::Input;
         // Simulate typing "feedback" into the input field
@@ -503,6 +516,7 @@ mod tests {
                 reason: None,
             },
             app_event_tx,
+            Default::default(),
         );
 
         // Determine dialog area size.

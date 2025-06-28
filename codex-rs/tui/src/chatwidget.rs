@@ -134,6 +134,7 @@ impl ChatWidget<'_> {
                 app_event_tx,
                 has_input_focus: true,
                 composer_max_rows: config.tui.composer_max_rows,
+                colors: config.tui.colors.clone(),
             }),
             input_focus: InputFocus::BottomPane,
             config,
@@ -492,6 +493,7 @@ impl ChatWidget<'_> {
             app_event_tx: self.app_event_tx.clone(),
             has_input_focus: true,
             composer_max_rows: config.tui.composer_max_rows,
+            colors: config.tui.colors.clone(),
         });
     }
 

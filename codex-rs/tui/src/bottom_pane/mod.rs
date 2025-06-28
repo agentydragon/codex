@@ -10,6 +10,7 @@ use ratatui::widgets::WidgetRef;
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::user_approval_widget::ApprovalRequest;
+use codex_core::config_types::Colors;
 
 mod approval_modal_view;
 mod bottom_pane_view;
@@ -47,6 +48,7 @@ pub(crate) struct BottomPane<'a> {
     app_event_tx: AppEventSender,
     has_input_focus: bool,
     is_task_running: bool,
+    colors: Colors,
 }
 
 pub(crate) struct BottomPaneParams {
@@ -54,6 +56,8 @@ pub(crate) struct BottomPaneParams {
     pub(crate) has_input_focus: bool,
     /// Maximum number of visible lines in the chat input composer.
     pub(crate) composer_max_rows: usize,
+    /// Per-element color overrides for the TUI.
+    pub(crate) colors: Colors,
 }
 
 impl BottomPane<'_> {
@@ -68,6 +72,7 @@ impl BottomPane<'_> {
             app_event_tx: params.app_event_tx,
             has_input_focus: params.has_input_focus,
             is_task_running: false,
+            colors: params.colors,
         }
     }
 
@@ -218,7 +223,7 @@ impl BottomPane<'_> {
         };
 
         // Otherwise create a new approval modal overlay.
-        let modal = ApprovalModalView::new(request, self.app_event_tx.clone());
+        let modal = ApprovalModalView::new(request, self.app_event_tx.clone(), self.colors.clone());
         self.active_view = Some(Box::new(modal));
         self.request_redraw()
     }
@@ -290,6 +295,7 @@ mod tests {
             app_event_tx,
             has_input_focus: true,
             composer_max_rows: 3,
+            colors: Default::default(),
         })
     }
 
@@ -301,6 +307,7 @@ mod tests {
             app_event_tx,
             has_input_focus: true,
             composer_max_rows: 3,
+            colors: Default::default(),
         });
         (pane, rx)
     }

@@ -209,6 +209,12 @@ pub struct Colors {
     /// Diff other (R/C)
     #[serde(default = "default_diff_other")]
     pub diff_other: String,
+    /// Approval dialog selection foreground
+    #[serde(default = "default_approval_select_fg")]
+    pub approval_select_fg: String,
+    /// Approval dialog error text
+    #[serde(default = "default_approval_error")]
+    pub approval_error: String,
 }
 
 fn default_context_high() -> String {
@@ -257,6 +263,14 @@ fn default_diff_other() -> String {
     "Cyan".to_string()
 }
 
+fn default_approval_select_fg() -> String {
+    "Blue".to_string()
+}
+
+fn default_approval_error() -> String {
+    "Red".to_string()
+}
+
 impl Default for Colors {
     fn default() -> Self {
         Self {
@@ -275,6 +289,8 @@ impl Default for Colors {
             diff_remove: default_diff_remove(),
             diff_modify: default_diff_modify(),
             diff_other: default_diff_other(),
+            approval_select_fg: default_approval_select_fg(),
+            approval_error: default_approval_error(),
         }
     }
 }

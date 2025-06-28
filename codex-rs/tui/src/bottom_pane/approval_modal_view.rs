@@ -15,14 +15,21 @@ pub(crate) struct ApprovalModalView<'a> {
     current: UserApprovalWidget<'a>,
     queue: Vec<ApprovalRequest>,
     app_event_tx: AppEventSender,
+    /// Color settings for TUI elements.
+    colors: codex_core::config_types::Colors,
 }
 
 impl ApprovalModalView<'_> {
-    pub fn new(request: ApprovalRequest, app_event_tx: AppEventSender) -> Self {
+    pub fn new(
+        request: ApprovalRequest,
+        app_event_tx: AppEventSender,
+        colors: codex_core::config_types::Colors,
+    ) -> Self {
         Self {
-            current: UserApprovalWidget::new(request, app_event_tx.clone()),
+            current: UserApprovalWidget::new(request, app_event_tx.clone(), colors.clone()),
             queue: Vec::new(),
             app_event_tx,
+            colors,
         }
     }
 
@@ -34,7 +41,8 @@ impl ApprovalModalView<'_> {
     fn maybe_advance(&mut self) {
         if self.current.is_complete() {
             if let Some(req) = self.queue.pop() {
-                self.current = UserApprovalWidget::new(req, self.app_event_tx.clone());
+                self.current =
+                    UserApprovalWidget::new(req, self.app_event_tx.clone(), self.colors.clone());
             }
         }
     }

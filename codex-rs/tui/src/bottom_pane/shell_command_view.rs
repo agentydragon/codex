@@ -104,6 +104,7 @@ mod tests {
             app_event_tx: evt_tx.clone(),
             has_input_focus: true,
             composer_max_rows: 1,
+            colors: Default::default(),
         });
         // Enter command 'a'
         view.handle_key_event(

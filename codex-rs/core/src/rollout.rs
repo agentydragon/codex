@@ -8,9 +8,9 @@ use std::fs::{self};
 use std::io::Error as IoError;
 
 use serde::Serialize;
+use time::OffsetDateTime;
 use time::format_description::FormatItem;
 use time::macros::format_description;
-use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::{self};
