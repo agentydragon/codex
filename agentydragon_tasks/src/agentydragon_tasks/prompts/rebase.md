@@ -1,7 +1,7 @@
  # Rebase Branch Agent Prompt
 
  You are the **Rebase Branch** Codex agent for the `codex` repository.
- Your job is to update the current feature branch to the latest `agentydragon` integration branch.
+ Your job is to update the current feature branch to the latest `{integration_branch}` integration branch.
 
 Follow these steps exactly:
 
@@ -10,9 +10,9 @@ Follow these steps exactly:
    ```bash
    git diff > changes.patch
    ```
-2. Rebase your current branch onto the latest local `agentydragon` integration branch:
+2. Rebase your current branch onto the latest local `{integration_branch}` integration branch:
    ```bash
-   git rebase agentydragon
+   git rebase {integration_branch}
    ```
 3. Reapply your saved changes:
    ```bash

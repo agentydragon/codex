@@ -12,8 +12,17 @@ from datetime import datetime
 from pathlib import Path
 
 import click
+from importlib import resources
+
+import agentydragon_tasks.prompts
 import pygit2
 from tabulate import tabulate
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
 # noqa: E501
 from agentydragon_tasks.tasklib import (
     TaskMeta,
@@ -26,22 +35,23 @@ from agentydragon_tasks.tasklib import (
     task_dir,
     worktree_dir,
 )
-
-# Enable in-process invocation of tool CLIs by adding their directory to sys.path
-sys.path.insert(0, str(repo_root() / "agentydragon" / "tools"))
-from common import (
+from agentydragon_tasks.common import (
     resolve_slug,
     run_codex_exec,
     run_git,
     worktrees_dir,
+    task_branch,
+    list_task_branches,
+    INTEGRATION_BRANCH,
 )
+from agentydragon_tasks.check_tasks import main as _check_tasks
 
 # Shared helper to invoke Codex exec with a prompt in a worktree
 
 
 def _launch_cmd_in_tmux(label: str, cmd: list[str], cwd: Path) -> None:
     """Launch the given command list in a detached tmux session named by label."""
-    session = f"agentydragon-{label.replace('/', '-') }"
+    session = task_branch(label).replace("/", "-")
     # Wrap the agent invocation so the pane drops into a shell after the command finishes
     wrapper = shlex.join(cmd) + "; exec $SHELL"
     tmux_cmd = ["tmux", "new-session", "-d", "-s", session, "bash", "-lc", wrapper]
@@ -55,7 +65,7 @@ def _launch_cmds_in_tmux(
     session_suffix: str, label_cmds: list[tuple[str, list[str]]], cwd: Path
 ) -> None:
     """Launch multiple commands in one detached tmux session with separate windows."""
-    session = f"agentydragon-{session_suffix}"
+    session = task_branch(session_suffix)
     for idx, (label, cmd) in enumerate(label_cmds):
         wrapper = shlex.join(cmd) + "; exec $SHELL"
         if idx == 0:
@@ -214,7 +224,7 @@ def status(timings: bool):
         print(f"Deps & topo sort in {t2 - t1:.3f}s")
     # Initialize pygit2 for batch Git operations
     repo = pygit2.Repository(str(repo_root()))
-    integration_ref = "refs/heads/agentydragon"
+    integration_ref = f"refs/heads/{INTEGRATION_BRANCH}"
     integration_oid = repo.references[integration_ref].target
 
     # Build rows (branch/worktree checks)
@@ -255,7 +265,7 @@ def status(timings: bool):
             if timings and wt_start is not None:
                 worktree_time += time.monotonic() - wt_start
         # Skip fully merged tasks (no branch, no worktree)
-        pattern = f"refs/heads/agentydragon-{tid}-"
+        pattern = f"refs/heads/{task_branch(tid)}-"
         branch_refs = [r for r in repo.references if r.startswith(pattern)]
         if meta.status == TaskStatus.MERGED and not branch_refs and wt_info == "none":
             merged_tasks.append((tid, meta.title))
@@ -340,7 +350,7 @@ def status(timings: bool):
         meta = all_meta[tid]
         if meta.status != TaskStatus.DONE:
             continue
-        pattern = f"refs/heads/agentydragon-{tid}-"
+        pattern = f"refs/heads/{task_branch(tid)}-"
         branch_refs = [r for r in repo.references if r.startswith(pattern)]
         if not branch_refs:
             continue
@@ -364,7 +374,7 @@ def status(timings: bool):
     if unblocked:
         print(f"\n\033[1mUnblocked:\033[0m {' '.join(unblocked)}")
         print(
-            f"\033[1mLaunch unblocked in tmux:\033[0m python agentydragon/tools/create_task_worktree.py --agent --tmux {' '.join(unblocked)}"
+            f"\033[1mLaunch unblocked in tmux:\033[0m tasks start-agent develop --tmux {' '.join(unblocked)}"
         )
     if timings:
         print(f"Total status time: {time.monotonic() - start:.3f}s")
@@ -453,7 +463,7 @@ def dispose(task_id):
         subprocess.run(["git", "worktree", "prune"], cwd=root)
         # Delete any matching branches
         # delete any matching local branches cleanly via for-each-ref
-        ref_pattern = f"refs/heads/agentydragon-{tid}-*"
+        ref_pattern = f"refs/heads/{task_branch(tid)}-*"
         branches = subprocess.run(
             ["git", "for-each-ref", "--format=%(refname:short)", ref_pattern],
             capture_output=True,
@@ -497,6 +507,12 @@ def launch(task_id):
     click.echo(line)
 
 
+@cli.command("check")
+def check():
+    """Run task-directory validation checks"""
+    _check_tasks()
+
+
 @cli.command()
 @click.argument("task_id")
 def shell(task_id):
@@ -536,7 +552,7 @@ def merge(task_id):
         click.echo(f"Worktree {wt} has uncommitted changes", err=True)
         sys.exit(1)
     repo = repo_root()
-    branch = f"agentydragon-{slug}"
+    branch = task_branch(slug)
     click.echo(f"Merging {branch} into agentydragon")
     run_git(["checkout", "agentydragon"], cwd=repo)
     run_git(["merge", "--no-ff", branch], cwd=repo)
@@ -679,9 +695,8 @@ def workflow():
             "Launch full-auto Dev agent for selected tasks?", default=True
         ):
             # Launch full-auto Dev fix agents in background tmux session
-            script = repo_root() / "agentydragon" / "tools" / "create_task_worktree.py"
             fix_cmds = [
-                (f"fix/{tid}", [sys.executable, str(script), "--agent", tid])
+                (f"fix/{tid}", ["tasks", "start-agent", "fix", tid])
                 for tid, err in commit_failures
                 if tid in fixes
             ]
@@ -715,13 +730,16 @@ def workflow():
                 click.echo(
                     f"Launching Merge Conflict Resolution agent for {bname} (cwd={task_wt})"
                 )
-                prompt_path = (
-                    repo_root() / "agentydragon" / "prompts" / "merge-conflict-fix.md"
+                # load merge-conflict-fix prompt from package resources
+                from importlib import resources
+
+                base = resources.read_text(
+                    agentydragon_tasks.prompts, "merge-conflict-fix.md"
                 )
+                text = base.format(integration_branch=INTEGRATION_BRANCH)
                 prompt = (
-                    f"{prompt_path.read_text()}\nBranch: {bname}\n"
-                    "Please resolve all merge conflicts so that this branch can be cleanly "
-                    "merged into 'agentydragon'."
+                    f"{text}\nBranch: {bname}\n"
+                    f"Please resolve all merge conflicts so that this branch can be cleanly merged into '{INTEGRATION_BRANCH}'."
                 )
                 run_codex_exec(task_wt, prompt, full_auto=True, exec_mode=True)
                 # Re-run merge-tree to verify conflicts resolved
@@ -815,9 +833,8 @@ def workflow():
 
     if selected_unblocked:
         click.echo("Launching Developer agents in background tmux session:")
-        script = repo_root() / "agentydragon" / "tools" / "create_task_worktree.py"
         dev_cmds = [
-            (f"develop/{tid}", [sys.executable, str(script), "--agent", tid])
+            (f"develop/{tid}", ["tasks", "start-agent", "develop", tid])
             for tid in selected_unblocked
         ]
         _launch_cmds_in_tmux("develop", dev_cmds, root)

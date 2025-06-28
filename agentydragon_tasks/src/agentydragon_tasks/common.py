@@ -55,6 +55,30 @@ def sandbox_flags_for_worktree(worktree: Path) -> list[str]:
     ]
 
 
+def task_branch(slug: str) -> str:
+    """Return the Git branch name for the given task slug."""
+    return f"agentydragon-{slug}"
+
+
+def list_task_branches() -> list[str]:
+    """Return a list of all Git branches for tasks (agentydragon-*)"""
+    out = subprocess.check_output(
+        [
+            "git",
+            "for-each-ref",
+            "--format=%(refname:short)",
+            "refs/heads/agentydragon-*",
+        ],
+        cwd=repo_root(),
+        text=True,
+    )
+    return [b for b in out.strip().splitlines() if b]
+
+
+# Name of the integration branch into which tasks are merged
+INTEGRATION_BRANCH = "agentydragon"
+
+
 def run_codex_exec(
     worktree: Path, prompt: str, full_auto: bool = True, exec_mode: bool = True
 ) -> None:

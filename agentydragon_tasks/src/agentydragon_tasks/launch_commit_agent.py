@@ -7,6 +7,9 @@ import sys
 from pathlib import Path
 
 import click
+from importlib import resources
+
+import agentydragon_tasks.prompts
 
 from agentydragon_tasks.common import (
     repo_root,
@@ -85,18 +88,21 @@ def main(task_inputs):
     wt = worktrees_dir() / slug
     if not wt.exists():
         click.echo(
-            f"Error: worktree for '{slug}' not found; run create_task_worktree.py first",
+            f"Error: worktree for '{slug}' not found; run 'tasks start-agent develop <task>' first",
             err=True,
         )
         sys.exit(1)
 
-    prompt_file = repo_root() / "agentydragon" / "prompts" / "commit.md"
-    task_file = tasks_dir() / f"{slug}.md"
-    for f in (prompt_file, task_file):
-        if not f.exists():
-            click.echo(f"Error: file not found: {f}", err=True)
-            sys.exit(1)
+    # load commit prompt from package resources
+    from importlib import resources
 
+    base = resources.read_text(agentydragon_tasks.prompts, "commit.md")
+    task_file = tasks_dir() / f"{slug}.md"
+    if not task_file.exists():
+        click.echo(f"Error: file not found: {task_file}", err=True)
+        sys.exit(1)
+
+    # prepare temp file for commit message
     msg_file = Path(subprocess.check_output(["mktemp"]).decode().strip())
     try:
         # Abort early if no pending changes in this worktree

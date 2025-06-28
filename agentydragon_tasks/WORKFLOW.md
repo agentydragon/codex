@@ -39,7 +39,7 @@ which go into `README.md`.
 
 - **Scope**: Runs inside the task’s worktree with explicit Git-write permission on `.git`.
 - **Actions**:
-  1. Launch the Rebase Branch agent (via `create_task_worktree.py --rebase`), passing `-s disk-write-folder=<worktree>/.git`.
+  1. Launch the Rebase Branch agent (via `tasks start-agent rebase <task-slug|NN>`).
 2. Agent runs these commands to preserve and reapply uncommitted changes:
    ```bash
    git diff > changes.patch
