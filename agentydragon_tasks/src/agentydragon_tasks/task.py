@@ -57,7 +57,37 @@ def _launch_cmd_in_tmux(label: str, cmd: list[str], cwd: Path) -> None:
     session = task_branch(label).replace("/", "-")
     # Wrap the agent invocation so the pane drops into a shell after the command finishes
     wrapper = shlex.join(cmd) + "; exec $SHELL"
-    tmux_cmd = ["tmux", "new-session", "-d", "-s", session, "bash", "-lc", wrapper]
+    # if session exists, open new window; else start new session with named window
+    if (
+        subprocess.run(
+            ["tmux", "has-session", "-t", session], stderr=subprocess.DEVNULL
+        ).returncode
+        == 0
+    ):
+        tmux_cmd = [
+            "tmux",
+            "new-window",
+            "-t",
+            session,
+            "-n",
+            label,
+            "bash",
+            "-lc",
+            wrapper,
+        ]
+    else:
+        tmux_cmd = [
+            "tmux",
+            "new-session",
+            "-d",
+            "-s",
+            session,
+            "-n",
+            label,
+            "bash",
+            "-lc",
+            wrapper,
+        ]
     click.echo(f"Launching {label} in tmux session '{session}' (pane will remain open)")
     click.echo(f"> tmux command: {' '.join(shlex.quote(arg) for arg in tmux_cmd)}")
     subprocess.check_call(tmux_cmd, cwd=str(cwd))
@@ -81,9 +111,14 @@ def _hydrate_worktree(src: Path, dst: Path) -> None:
     entries = [
         str(src / p.name) for p in src.iterdir() if p.name not in (".worktrees", ".git")
     ]
-    if shutil.which("cp") and sys.platform != "darwin":
-        cmd = ["cp", "--archive", "--reflink=auto"] + entries + [str(dst)]
-        method = "CoW copy"
+    if shutil.which("cp"):
+        if sys.platform == "darwin":
+            # use clonefile CoW copy on macOS with recursion, fallback to copyfile if unsupported
+            cmd = ["cp", "-c", "-R"] + entries + [str(dst)]
+            method = "CoW clonefile"
+        else:
+            cmd = ["cp", "--archive", "--reflink=auto"] + entries + [str(dst)]
+            method = "CoW reflink"
     else:
         cmd = [
             "rsync",
@@ -106,18 +141,37 @@ def _launch_cmds_in_tmux(
     for idx, (label, cmd) in enumerate(label_cmds):
         wrapper = shlex.join(cmd) + "; exec $SHELL"
         if idx == 0:
-            tmux_cmd = [
-                "tmux",
-                "new-session",
-                "-d",
-                "-s",
-                session,
-                "-n",
-                label,
-                "bash",
-                "-lc",
-                wrapper,
-            ]
+            # reuse existing or start new session with initial window
+            if (
+                subprocess.run(
+                    ["tmux", "has-session", "-t", session], stderr=subprocess.DEVNULL
+                ).returncode
+                == 0
+            ):
+                tmux_cmd = [
+                    "tmux",
+                    "new-window",
+                    "-t",
+                    session,
+                    "-n",
+                    label,
+                    "bash",
+                    "-lc",
+                    wrapper,
+                ]
+            else:
+                tmux_cmd = [
+                    "tmux",
+                    "new-session",
+                    "-d",
+                    "-s",
+                    session,
+                    "-n",
+                    label,
+                    "bash",
+                    "-lc",
+                    wrapper,
+                ]
         else:
             tmux_cmd = [
                 "tmux",

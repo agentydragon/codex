@@ -87,7 +87,7 @@ def load_task(path: Path) -> (TaskMeta, str):
 
 
 def save_task(path: Path, meta: TaskMeta, body: str) -> None:
-    tm = meta.dict()
+    tm = meta.model_dump()
     # Serialize enum to its string value for front-matter
     if isinstance(tm.get("status"), Enum):
         tm["status"] = tm["status"].value
