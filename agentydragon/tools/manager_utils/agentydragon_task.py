@@ -31,7 +31,7 @@ import shutil
 sys.path.insert(0, str(repo_root() / "agentydragon" / "tools"))
 from launch_commit_agent import main as commit_cmd
 from create_task_worktree import main as create_task_worktree_cmd
-from common import sandbox_flags_for_worktree
+from common import sandbox_flags_for_worktree, resolve_slug, worktrees_dir
 
 
 # Shared helper to invoke Codex exec with a prompt in a worktree
@@ -481,6 +481,25 @@ def launch(task_id):
 
 
 @cli.command()
+@click.argument("task_id")
+def shell(task_id):
+    """Open a shell in the worktree for TASK_ID."""
+    try:
+        slug = resolve_slug(task_id)
+    except Exception as e:
+        click.echo(str(e), err=True)
+        sys.exit(1)
+    wt = worktrees_dir() / slug
+    if not wt.exists():
+        click.echo(f"No worktree for task {task_id}", err=True)
+        sys.exit(1)
+    os.chdir(wt)
+    click.echo(f"Entering shell at {wt}")
+    shell_cmd = os.environ.get("SHELL", "/bin/sh")
+    os.execvp(shell_cmd, [shell_cmd])
+
+
+@cli.command()
 def workflow():
     """Interactive workflow: commit dirty worktrees, merge ready branches, dispose, and report task statuses."""
     root = repo_root()
@@ -798,7 +817,9 @@ def workflow():
         for n in all_meta:
             visit(n)
     except Exception:
-        sorted_ids = [m.id for m in sorted(all_meta.values(), key=lambda m: path_map[m.id].name)]
+        sorted_ids = [
+            m.id for m in sorted(all_meta.values(), key=lambda m: path_map[m.id].name)
+        ]
 
     # 6. Report task statuses with color
     click.echo("\nTask statuses:")
