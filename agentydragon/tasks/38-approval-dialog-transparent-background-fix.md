@@ -11,8 +11,8 @@ last_updated = "2025-06-26T17:52:40.329780"
 
 ## Status
 
-**General Status**: Done  
-**Summary**: Identify and implement an opaque background for the approval dialog to prevent underlying text bleed-through.
+**General Status**: done  
+**Summary**: Opaque background implemented and validated via unit test.
 
 ## Goal
 
@@ -25,9 +25,9 @@ Ensure the approval dialog is drawn with a solid background color (matching the 
 
 ## Implementation
 
-- Updated `render_ref` in `codex-rs/tui/src/user_approval_widget.rs` to fill the entire dialog area with a `DarkGray` background before drawing the border and content.
-- Implemented nested loops over the dialog `Rect` calling `buf[(col, row)].set_bg(Color::DarkGray)` on each cell.
-- Added unit test `render_approval_dialog_fills_background` in `tui/src/user_approval_widget.rs` to render the widget onto a buffer pre-filled with a red background and verify no cell in the dialog region remains transparent or retains the sentinel background.
+- Modify `render_ref` in `codex-rs/tui/src/user_approval_widget.rs` to fill the dialog `area` with a `DarkGray` background before drawing border and content.
+- Use nested loops over `area` to call `buf[(col, row)].set_bg(Color::DarkGray)` for each cell.
+- Add unit test `render_approval_dialog_fills_background` to prefill a buffer with a sentinel background and assert all cells in the dialog region are recolored.
 
 ## Notes
 
