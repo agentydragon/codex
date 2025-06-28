@@ -48,3 +48,33 @@ Replace the basic line‑editing prompt composer with an embedded Neovim window 
 - This relies on a working `nvim` binary in PATH or specified via `nvim_binary` config.
 - Investigate performance impact of embedding a full editor in the TUI; ensure fallback to external-editor remains smooth.
 - Consider edge cases (resizing, plugin‑heavy Neovim configs) and document prerequisites in the README.
+
+## Full Neovim Integration Details (nvim-rs)
+
+When embedding Neovim, the following considerations apply:
+
+**Features:**
+- ✅ All vim features work perfectly
+- ✅ Full visual modes (character, line, block)
+- ✅ Complete yank/paste with registers
+- ✅ Multiple buffers and windows
+- ✅ All plugins and configurations
+
+**Technical Challenges:**
+- Requires Neovim installed
+- Heavy resource usage compared to lightweight alternatives
+- Complex async integration via msgpack-rpc
+- Communication overhead
+- Variable height requires manual viewport synchronization
+
+**Example Implementation:**
+```rust
+// Requires spawning Neovim process
+// Complex async communication
+nvim.ui_try_resize(width, height).await?;
+```
+
+**Comparison with Lightweight Alternatives:**
+- For simple vim-like text input, consider `tui-textarea` crate instead
+- For modal editing framework, consider `modalkit` 
+- Full Neovim embedding is best when you need complete vim compatibility
