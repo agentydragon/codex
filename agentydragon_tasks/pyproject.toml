@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentydragon_tasks"
+version = "0.1.0"
+description = "AgentDragon task management tools"
+readme = "agentydragon_tasks/README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "click",
+    "toml",
+    "pydantic",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[project.scripts]
+agentydragon-create-task-worktree = "agentydragon_tasks.tools.create_task_worktree:main"
+agentydragon-check-tasks = "agentydragon_tasks.tools.check_tasks:main"
+agentydragon-launch-commit-agent = "agentydragon_tasks.tools.launch_commit_agent:main"
+agentydragon-launch-project-manager = "agentydragon_tasks.tools.launch_project_manager:main"
+agentydragon-task = "agentydragon_tasks.tools.task:cli"
+tasks = "agentydragon_tasks.tools.task:cli"

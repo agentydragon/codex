@@ -7,6 +7,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import click
@@ -24,6 +25,13 @@ def run(cmd, cwd=None):
     subprocess.check_call(cmd, cwd=cwd)
 
 
+def timed_run_stage(label: str, cmd: list[str], cwd: Path | None = None) -> None:
+    """Run a command, printing invocation and elapsed time with a label."""
+    click.echo(f"{label}: {' '.join(cmd)}")
+    t0 = time.monotonic()
+    run(cmd, cwd=cwd)
+    click.echo(f"{label} completed in {time.monotonic() - t0:.3f}s")
+
 def resolve_slug(input_id: str) -> str:
     if input_id.isdigit() and len(input_id) == 2:
         matches = list(tasks_dir().glob(f"{input_id}-*.md"))
@@ -35,6 +43,25 @@ def resolve_slug(input_id: str) -> str:
         )
         sys.exit(1)
     return input_id
+
+def hydrate_worktree(src: Path, dst: Path) -> None:
+    """Perform filesystem hydration via CoW copy or rsync with timing and log."""
+    entries = [str(src / p.name) for p in src.iterdir() if p.name not in (".worktrees", ".git")]
+    if shutil.which("cp") and sys.platform != "darwin":
+        cmd = ["cp", "--archive", "--reflink=auto"] + entries + [str(dst)]
+        method = "CoW copy"
+    else:
+        cmd = [
+            "rsync",
+            "-a",
+            "--delete",
+            "--exclude=.git/",
+            "--exclude=.worktrees/",
+            f"{src}/",
+            f"{dst}/",
+        ]
+        method = "rsync copy"
+    timed_run_stage(f"Stage 2 hydration via {method}", cmd)
 
 
 @click.command()
@@ -146,43 +173,15 @@ def main(
     wt_root.mkdir(parents=True, exist_ok=True)
     new_wt = False
     if not wt_path.exists():
-        # --- COW hydration logic via rsync ---
-        # Instead of checking out files normally, register the worktree empty and then
-        # perform a filesystem-level hydration via rsync (with reflink if supported) for
-        # near-instant setup while excluding VCS metadata and other worktrees.
+        # Stage 1: register worktree without checkout
+        t0 = time.monotonic()
+        click.echo(f"Stage 1: git worktree add --no-checkout {wt_path} {branch}")
         run(["git", "worktree", "add", "--no-checkout", str(wt_path), branch])
-        src = str(repo_root())
-        dst = str(wt_path)
-        # Hydrate via CoW copy if possible, excluding the .worktrees directory; fallback to rsync
-        cp_cmd = None
-        if shutil.which("cp") and sys.platform != "darwin":
-            # Copy all top-level entries except .worktrees and .git to avoid recursion and copying VCS metadata.
-            # Note: in a git worktree, .git is a gitfile (not a directory) created by 'git worktree add'
-            # that points to the main repo's worktrees metadata, so we skip it to preserve the link.
-            base = Path(src)
-            entries = [
-                str(base / p.name)
-                for p in base.iterdir()
-                if p.name not in (".worktrees", ".git")
-            ]
-            cp_cmd = ["cp", "--archive", "--reflink=auto"] + entries + [dst]
-            try:
-                run(cp_cmd)
-            except subprocess.CalledProcessError:
-                cp_cmd = None
-        if not cp_cmd:
-            rsync_cmd = [
-                "rsync",
-                "-a",
-                "--delete",
-                # Do not include .git, but *do* include .gitignore, .github etc.
-                "--exclude=.git/",
-                "--exclude=.worktrees/",
-                f"{src}/",
-                f"{dst}/",
-            ]
-            run(rsync_cmd)
-        # Guard against nested worktrees in the new worktree (avoid runaway recursion)
+        click.echo(f"Stage 1 completed in {time.monotonic() - t0:.3f}s")
+
+        hydrate_worktree(repo_root(), wt_path)
+
+        # Guard against nested worktrees
         nested = list(wt_path.rglob(".worktrees"))
         if nested:
             click.echo(
@@ -190,9 +189,12 @@ def main(
                 err=True,
             )
             sys.exit(1)
-        # Install pre-commit hooks in the new worktree
+        # Stage 3: install pre-commit hooks
         if shutil.which("pre-commit"):
+            click.echo("Stage 3: pre-commit install hooks")
+            t0 = time.monotonic()
             run(["pre-commit", "install"], cwd=dst)
+            click.echo(f"Stage 3 completed in {time.monotonic() - t0:.3f}s")
         else:
             click.echo("Warning: pre-commit not found; skipping hook install", err=True)
         new_wt = True

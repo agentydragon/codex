@@ -1,7 +1,7 @@
 import toml
 import pytest
 
-from ..tasklib import TaskMeta, load_task, save_task
+from agentydragon_tasks.agentydragon_tasks.tools.tasklib import TaskMeta, load_task, save_task
 
 SAMPLE = """+++
 id = "99"
