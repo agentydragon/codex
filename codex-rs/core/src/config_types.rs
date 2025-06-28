@@ -221,49 +221,49 @@ pub struct Colors {
 }
 
 fn default_context_high() -> String {
-    "Green".to_string()
+    "fg=Green".to_string()
 }
 fn default_context_medium() -> String {
-    "Yellow".to_string()
+    "fg=Yellow".to_string()
 }
 fn default_context_low() -> String {
-    "Red".to_string()
+    "fg=Red".to_string()
 }
 fn default_scroll_thumb_active() -> String {
-    "LightYellow".to_string()
+    "fg=LightYellow".to_string()
 }
 fn default_scroll_thumb_inactive() -> String {
-    "Gray".to_string()
+    "fg=Gray".to_string()
 }
 fn default_scroll_track() -> String {
-    "DarkGray".to_string()
+    "fg=DarkGray".to_string()
 }
 fn default_popup_fg() -> String {
-    "LightBlue".to_string()
+    "fg=LightBlue".to_string()
 }
 fn default_popup_bg() -> String {
-    "DarkGray".to_string()
+    "bg=DarkGray".to_string()
 }
 fn default_exec_success() -> String {
-    "Green".to_string()
+    "fg=Green".to_string()
 }
 fn default_exec_failure() -> String {
-    "Red".to_string()
+    "fg=Red".to_string()
 }
 fn default_exec_timing() -> String {
-    "Gray".to_string()
+    "fg=Gray".to_string()
 }
 fn default_diff_add() -> String {
-    "Green".to_string()
+    "fg=Green".to_string()
 }
 fn default_diff_remove() -> String {
-    "Red".to_string()
+    "fg=Red".to_string()
 }
 fn default_diff_modify() -> String {
-    "Yellow".to_string()
+    "fg=Yellow".to_string()
 }
 fn default_diff_other() -> String {
-    "Cyan".to_string()
+    "fg=Cyan".to_string()
 }
 
 fn default_approval_error_style() -> String {
