@@ -293,6 +293,51 @@ inherit = "none"
 set = { PATH = "/usr/bin", MY_FLAG = "1" }
 ```
 
+## tui.colors
+
+Customize individual UI colors in the TUI under the `[tui.colors]` section. Keys are in kebab-case; values are any of the named colors listed below or `Reset` to clear styling.
+
+```toml
+[tui.colors]
+context-high = "Green"
+context-medium = "Yellow"
+context-low = "Red"
+scroll-thumb-active = "LightYellow"
+scroll-thumb-inactive = "Gray"
+scroll-track = "DarkGray"
+popup-fg = "LightBlue"
+popup-bg = "DarkGray"
+exec-success = "Green"
+exec-failure = "Red"
+exec-timing = "Gray"
+diff-add = "Green"
+diff-remove = "Red"
+diff-modify = "Yellow"
+diff-other = "Cyan"
+```
+
+All fields are optional; omitted entries default to the built-in palette above.
+
+Supported color names (case-insensitive):
+
+- Black
+- Red
+- Green
+- Yellow
+- Blue
+- Magenta
+- Cyan
+- Gray
+- DarkGray
+- LightRed
+- LightGreen
+- LightYellow
+- LightBlue
+- LightMagenta
+- LightCyan
+- White
+- Reset
+
 Currently, `CODEX_SANDBOX_NETWORK_DISABLED=1` is also added to the environment, assuming network is disabled. This is not configurable.
 
 ## notify

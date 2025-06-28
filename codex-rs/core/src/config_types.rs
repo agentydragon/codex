@@ -105,6 +105,9 @@ pub struct Tui {
     /// When `true`, render the sender label on its own line above the message content.
     #[serde(default)]
     pub sender_break_line: bool,
+    /// Per-element color overrides for the TUI.
+    #[serde(default)]
+    pub colors: Colors,
 
     /// Maximum number of visible lines in the chat input composer before scrolling.
     /// The composer will expand up to this many lines; additional content will enable
@@ -151,6 +154,97 @@ impl Default for Tui {
             editor: default_editor(),
             require_double_ctrl_d: false,
             double_ctrl_d_timeout_secs: default_double_ctrl_d_timeout_secs(),
+            colors: Colors::default(),
+        }
+    }
+}
+
+/// Named colors for individual TUI elements.  Override in `~/.codex/config.toml`
+/// under `[tui.colors]` using kebab-case keys.
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub struct Colors {
+    /// ">40% context left" indicator
+    #[serde(default = "default_context_high")]
+    pub context_high: String,
+    /// "25%–40% context left" indicator
+    #[serde(default = "default_context_medium")]
+    pub context_medium: String,
+    /// "≤25% context left" indicator
+    #[serde(default = "default_context_low")]
+    pub context_low: String,
+    /// Focused scrollbar thumb
+    #[serde(default = "default_scroll_thumb_active")]
+    pub scroll_thumb_active: String,
+    /// Unfocused scrollbar thumb
+    #[serde(default = "default_scroll_thumb_inactive")]
+    pub scroll_thumb_inactive: String,
+    /// Scrollbar track
+    #[serde(default = "default_scroll_track")]
+    pub scroll_track: String,
+    /// Popup (approval/command) foreground
+    #[serde(default = "default_popup_fg")]
+    pub popup_fg: String,
+    /// Popup (approval/command) background
+    #[serde(default = "default_popup_bg")]
+    pub popup_bg: String,
+    /// ✓ success marker
+    #[serde(default = "default_exec_success")]
+    pub exec_success: String,
+    /// ✗ failure marker
+    #[serde(default = "default_exec_failure")]
+    pub exec_failure: String,
+    /// Execution timing text
+    #[serde(default = "default_exec_timing")]
+    pub exec_timing: String,
+    /// Diff add (A)
+    #[serde(default = "default_diff_add")]
+    pub diff_add: String,
+    /// Diff remove (D)
+    #[serde(default = "default_diff_remove")]
+    pub diff_remove: String,
+    /// Diff modify (M)
+    #[serde(default = "default_diff_modify")]
+    pub diff_modify: String,
+    /// Diff other (R/C)
+    #[serde(default = "default_diff_other")]
+    pub diff_other: String,
+}
+
+fn default_context_high() -> String { "Green".to_string() }
+fn default_context_medium() -> String { "Yellow".to_string() }
+fn default_context_low() -> String { "Red".to_string() }
+fn default_scroll_thumb_active() -> String { "LightYellow".to_string() }
+fn default_scroll_thumb_inactive() -> String { "Gray".to_string() }
+fn default_scroll_track() -> String { "DarkGray".to_string() }
+fn default_popup_fg() -> String { "LightBlue".to_string() }
+fn default_popup_bg() -> String { "DarkGray".to_string() }
+fn default_exec_success() -> String { "Green".to_string() }
+fn default_exec_failure() -> String { "Red".to_string() }
+fn default_exec_timing() -> String { "Gray".to_string() }
+fn default_diff_add() -> String { "Green".to_string() }
+fn default_diff_remove() -> String { "Red".to_string() }
+fn default_diff_modify() -> String { "Yellow".to_string() }
+fn default_diff_other() -> String { "Cyan".to_string() }
+
+impl Default for Colors {
+    fn default() -> Self {
+        Self {
+            context_high: default_context_high(),
+            context_medium: default_context_medium(),
+            context_low: default_context_low(),
+            scroll_thumb_active: default_scroll_thumb_active(),
+            scroll_thumb_inactive: default_scroll_thumb_inactive(),
+            scroll_track: default_scroll_track(),
+            popup_fg: default_popup_fg(),
+            popup_bg: default_popup_bg(),
+            exec_success: default_exec_success(),
+            exec_failure: default_exec_failure(),
+            exec_timing: default_exec_timing(),
+            diff_add: default_diff_add(),
+            diff_remove: default_diff_remove(),
+            diff_modify: default_diff_modify(),
+            diff_other: default_diff_other(),
         }
     }
 }
@@ -269,4 +363,22 @@ pub enum ReasoningSummary {
     Detailed,
     /// Option to disable reasoning summaries.
     None,
+}
+
+/// How to emit ANSI color escapes.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum ColorChoice {
+    /// Always emit ANSI color codes.
+    Always,
+    /// Never emit ANSI color codes.
+    Never,
+    /// Emit ANSI color codes when output is a TTY (default).
+    Auto,
+}
+
+impl Default for ColorChoice {
+    fn default() -> Self {
+        ColorChoice::Auto
+    }
 }

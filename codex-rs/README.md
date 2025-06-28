@@ -77,6 +77,33 @@ if __name__ == "__main__":
     main(sys.argv[1])
 ```
 
+### `tui.colors`
+
+Customize individual TUI colors under `[tui.colors]` in `~/.codex/config.toml`:
+
+```toml
+[tui.colors]
+context-high = "Green"
+context-medium = "Yellow"
+context-low = "Red"
+scroll-thumb-active = "LightYellow"
+scroll-thumb-inactive = "Gray"
+scroll-track = "DarkGray"
+popup-fg = "LightBlue"
+popup-bg = "DarkGray"
+exec-success = "Green"
+exec-failure = "Red"
+exec-timing = "Gray"
+diff-add = "Green"
+diff-remove = "Red"
+diff-modify = "Yellow"
+diff-other = "Cyan"
+```
+
+Supported color names (case-insensitive): Black, Red, Green, Yellow, Blue,
+Magenta, Cyan, Gray, DarkGray, LightRed, LightGreen, LightYellow,
+LightBlue, LightMagenta, LightCyan, White, Reset.
+
 ### Model Context Protocol Support
 
 Codex CLI functions as an MCP client that can connect to MCP servers on startup. See the [`mcp_servers`](./config.md#mcp_servers) section in the configuration documentation for details.
@@ -103,7 +130,7 @@ responses and notifications to stdout. No separate container or VM is spun up an
 Linux the process is optionally sandboxed via Landlock/seccomp (and on macOS via Seatbelt).
 See `codex-rs/mcp-server/src/lib.rs` for the implementation.
 
-By default, the server advertises a single MCP tool named `codex`.  A `ListTools` request
+By default, the server advertises a single MCP tool named `codex`. A `ListTools` request
 will return this tool along with its input schema (fields: `prompt`, `model`, `profile`,
 `cwd`, `approval_policy`, `sandbox_permissions`, `config`).
 

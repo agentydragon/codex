@@ -636,6 +636,7 @@ dependencies = [
  "predicates",
  "pretty_assertions",
  "rand 0.9.1",
+ "ratatui",
  "reqwest",
  "seccompiler",
  "serde",

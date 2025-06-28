@@ -316,6 +316,8 @@ pub struct ConfigToml {
 
     pub model_reasoning_effort: Option<ReasoningEffort>,
     pub model_reasoning_summary: Option<ReasoningSummary>,
+    /// How to emit ANSI color escapes. Valid values: "always", "never", or "auto".
+    pub color: Option<crate::config_types::ColorChoice>,
 }
 
 fn deserialize_sandbox_permissions<'de, D>(
