@@ -56,6 +56,8 @@ def main():
                 'user_approved': 0,
                 'user_denied': 0,
                 'executed': 0,
+                'sandbox_failures': 0,
+                'retries': 0,
             }
         stats[key]['total'] += 1
         if e.get('auto_approved'):
@@ -71,14 +73,25 @@ def main():
             stats[key]['autodenied'] += 1
         if e.get('execution_started'):
             stats[key]['executed'] += 1
+        # Count sandbox failures by matching the error message
+        if (res := e.get('execution_result')) and (err := res.get('error')):
+            if err.startswith('Sandbox error'):
+                stats[key]['sandbox_failures'] += 1
+        # Count retries identified by retry call_id suffix
+        if e.get('id', '').endswith('-retry'):
+            stats[key]['retries'] += 1
 
     # Print grouped summary
-    header = f"{'Tot':>3} {'Auto✓':>6} {'Auto✗':>6} {'User✓':>6} {'User✗':>6} {'Exec':>5} {'CWD':<30} Command"
+    header = (
+        f"{'Tot':>3} {'Auto✓':>6} {'Auto✗':>6} {'User✓':>6} {'User✗':>6} "
+        f"{'Exec':>5} {'SBX✗':>6} {'Retry':>6} {'CWD':<30} Command"
+    )
     print(header)
     for (cwd, cmd), s in sorted(stats.items(), key=lambda item: item[1]['total'], reverse=True):
         print(
             f"{s['total']:>3} {s['autoapproved']:>6} {s['autodenied']:>6} "
             f"{s['user_approved']:>6} {s['user_denied']:>6} {s['executed']:>5} "
+            f"{s['sandbox_failures']:>6} {s['retries']:>6} "
             f"{cwd:<30} {cmd}"
         )
 
