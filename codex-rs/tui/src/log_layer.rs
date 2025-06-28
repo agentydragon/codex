@@ -8,6 +8,7 @@
 //! formatter (`tracing_subscriber::fmt::format::FmtSpan`) used by the default
 //! fmt layer so the text matches what is written to the log file.
 
+#![allow(clippy::uninlined_format_args)]
 use std::fmt::Write as _;
 
 use tokio::sync::mpsc::UnboundedSender;

@@ -34,7 +34,7 @@ pub fn approximate_tokens_used(items: &[ResponseItem]) -> usize {
             _ => {}
         }
     }
-    (char_count + 3) / 4
+    char_count.div_ceil(4)
 }
 
 /// Return the model's max context size in tokens, using known limits or heuristics.

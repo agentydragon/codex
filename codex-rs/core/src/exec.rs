@@ -33,7 +33,8 @@ const DEFAULT_TIMEOUT_MS: u64 = 10_000;
 
 // Hardcode these since it does not seem worth including the libc crate just
 // for these.
-const SIGKILL_CODE: i32 = 9;
+/// Exit code signal bit for SIGKILL (user abort via Ctrl-C).
+pub(crate) const SIGKILL_CODE: i32 = 9;
 const TIMEOUT_CODE: i32 = 64;
 
 const MACOS_SEATBELT_BASE_POLICY: &str = include_str!("seatbelt_base_policy.sbpl");

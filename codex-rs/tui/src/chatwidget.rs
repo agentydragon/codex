@@ -41,7 +41,6 @@ use crate::context::calculate_context_percent_remaining;
 use crate::conversation_history_widget::ConversationHistoryWidget;
 use crate::history_cell::PatchEventType;
 use crate::user_approval_widget::ApprovalRequest;
-use shlex;
 
 pub(crate) struct ChatWidget<'a> {
     app_event_tx: AppEventSender,
@@ -249,9 +248,7 @@ impl ChatWidget<'_> {
                 ResponseItem::Reasoning { summary, .. } => {
                     let text = summary
                         .into_iter()
-                        .filter_map(|s| match s {
-                            ReasoningItemReasoningSummary::SummaryText { text } => Some(text),
-                        })
+                        .map(|ReasoningItemReasoningSummary::SummaryText { text }| text)
                         .collect::<Vec<_>>()
                         .join(" ");
                     self.conversation_history

@@ -1,4 +1,5 @@
-use std::path::PathBuf;
+use std::path::Path;
+use tracing::error;
 
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
@@ -36,12 +37,12 @@ pub struct ExecHistoryView {
 }
 
 impl ExecHistoryView {
-    pub fn new(codex_home: &PathBuf) -> Self {
+    pub fn new(codex_home: &Path) -> Self {
         let history = ExecHistory::new(codex_home);
         let entries = match history.read_all() {
             Ok(entries) => entries,
             Err(e) => {
-                eprintln!("Failed to read exec history: {}", e);
+                error!("Failed to read exec history: {e}");
                 Vec::new()
             }
         };
@@ -66,7 +67,7 @@ impl ExecHistoryView {
                 }
             }
             Err(e) => {
-                self.error_message = Some(format!("Failed to query exec history: {}", e));
+                self.error_message = Some(format!("Failed to query exec history: {e}"));
             }
         }
     }
@@ -208,7 +209,7 @@ impl<'a> BottomPaneView<'a> for ExecHistoryView {
                     Ok(duration) => {
                         let secs = duration.as_secs();
                         if secs < 60 {
-                            format!("{}s ago", secs)
+                            format!("{secs}s ago")
                         } else if secs < 3600 {
                             format!("{}m ago", secs / 60)
                         } else {

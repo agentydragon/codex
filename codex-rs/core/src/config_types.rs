@@ -209,13 +209,13 @@ pub struct Colors {
     /// Diff other (R/C)
     #[serde(default = "default_diff_other")]
     pub diff_other: String,
-    /// Approval dialog selection style (e.g. "bold,fg=Blue,underline")
+    /// Approval dialog selection style (comma-separated modifiers and colors, e.g. "bold,fg=Blue,underline")
     #[serde(default = "default_approval_select_style")]
     pub approval_select_style: String,
-    /// Approval dialog default/plain style (e.g. "fg=Gray")
+    /// Approval dialog default/plain style (comma-separated modifiers and colors, e.g. "fg=Gray")
     #[serde(default = "default_approval_plain_style")]
     pub approval_plain_style: String,
-    /// Approval dialog error style (e.g. "fg=Red")
+    /// Approval dialog error style (comma-separated modifiers and colors, e.g. "fg=Red")
     #[serde(default = "default_approval_error_style")]
     pub approval_error_style: String,
 }

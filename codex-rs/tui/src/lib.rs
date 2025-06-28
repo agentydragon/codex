@@ -14,7 +14,6 @@ use codex_core::protocol::SandboxPolicy;
 use codex_core::util::is_inside_git_repo;
 use codex_login::try_read_openai_api_key;
 use log_layer::TuiLogLayer;
-use serde_json;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::fs::{self};
@@ -34,7 +33,7 @@ mod cell_widget;
 mod chatwidget;
 mod citation_regex;
 mod cli;
-mod color;
+// mod color removed: replaced by style-based parsing
 mod config_reload;
 mod confirm_ctrl_d;
 pub mod context;
@@ -57,7 +56,6 @@ mod user_approval_widget;
 
 pub use cli::Cli;
 
-pub use color::parse_color;
 pub use style::parse_style;
 
 pub fn run_main(cli: Cli, codex_linux_sandbox_exe: Option<PathBuf>) -> std::io::Result<()> {

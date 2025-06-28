@@ -31,7 +31,6 @@ use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::exec_command::relativize_to_home;
 use crate::exec_command::strip_bash_lc_and_escape;
-use crate::parse_color;
 use crate::parse_style;
 
 /// Request coming from the agent that needs user approval.
@@ -147,8 +146,8 @@ pub(crate) struct UserApprovalWidget<'a> {
     select_style: Style,
     /// Style for unselected (plain) option text.
     plain_style: Style,
-    /// Background color for the dialog.
-    bg_color: Color,
+    /// Background style for the dialog.
+    bg_style: Style,
 }
 
 // Number of lines automatically added by ratatui’s [`Block`] when
@@ -163,7 +162,7 @@ impl UserApprovalWidget<'_> {
     ) -> Self {
         let select_style = parse_style(&colors.approval_select_style);
         let plain_style = parse_style(&colors.approval_plain_style);
-        let bg_color = parse_color(&colors.popup_bg);
+        let bg_style = parse_style(&colors.popup_bg);
         let input = Input::default();
         let confirmation_prompt = match &approval_request {
             ApprovalRequest::Exec {
@@ -231,7 +230,7 @@ impl UserApprovalWidget<'_> {
             done: false,
             select_style,
             plain_style,
-            bg_color,
+            bg_style,
         }
     }
 
@@ -429,7 +428,7 @@ impl WidgetRef for &UserApprovalWidget<'_> {
         // Fill the entire dialog area with a solid background to block underlying text.
         for row in area.y..area.y + area.height {
             for col in area.x..area.x + area.width {
-                buf[(col, row)].set_bg(self.bg_color);
+                buf[(col, row)].set_style(self.bg_style);
             }
         }
         outer.render(area, buf);
@@ -447,7 +446,6 @@ mod tests {
     use crossterm::event::KeyModifiers;
     use ratatui::buffer::Buffer;
     use ratatui::layout::Rect;
-    use ratatui::style::Color;
     use std::sync::mpsc;
 
     #[test]

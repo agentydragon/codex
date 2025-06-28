@@ -77,12 +77,12 @@ if __name__ == "__main__":
     main(sys.argv[1])
 ```
 
-### `tui.colors`
+### `tui.styles`
 
-Customize individual TUI colors under `[tui.colors]` in `~/.codex/config.toml`:
+Customize individual TUI styles under `[tui.styles]` in `~/.codex/config.toml`. Style spec syntax: comma-separated modifiers (`bold`, `italic`, `underline`), `fg=<color>` and `bg=<color>` (named or hex `#RRGGBB`).
 
 ```toml
-[tui.colors]
+[tui.styles]
 # Context bar (chat composer)
 context-high         = "Green"      # >40% context left
 context-medium       = "Yellow"     # 25–40% context left
@@ -155,8 +155,7 @@ dim-text              = "Gray"
 # Global reset fallback
 reset                 = "Reset"
 ```
-
-Supported color names:
+Supported style color names (case-insensitive) and modifiers:
 Black, Red, Green, Yellow, Blue, Magenta, Cyan, Gray,
 DarkGray, LightRed, LightGreen, LightYellow, LightBlue,
 LightMagenta, LightCyan, White, Reset.

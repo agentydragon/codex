@@ -362,7 +362,7 @@ impl ChatComposer<'_> {
                 return;
             }
         };
-        if let Err(e) = write!(tmp, "{}", content) {
+        if let Err(e) = write!(tmp, "{content}") {
             tracing::error!("failed to write to temp file for editor: {e}");
             return;
         }
@@ -509,7 +509,7 @@ impl WidgetRef for &ChatComposer<'_> {
         // Render context-left indicator when not displaying a popup
         if self.command_popup.is_none() {
             let pct = self.context_left_percent.round();
-            let text = format!("{:.0}% context left", pct);
+            let text = format!("{pct:.0}% context left");
             let color = if pct > 40.0 {
                 Color::Green
             } else if pct > 25.0 {

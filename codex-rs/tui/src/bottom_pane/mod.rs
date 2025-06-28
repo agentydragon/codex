@@ -202,7 +202,7 @@ impl BottomPane<'_> {
     }
 
     /// Launch exec history view.
-    pub fn push_exec_history(&mut self, codex_home: &std::path::PathBuf) {
+    pub fn push_exec_history(&mut self, codex_home: &std::path::Path) {
         let view = ExecHistoryView::new(codex_home);
         self.active_view = Some(Box::new(view));
         self.request_redraw();

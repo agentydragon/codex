@@ -28,10 +28,10 @@ impl ConfirmCtrlD {
         if !self.require_double {
             return true;
         }
-        if let Some(deadline) = self.deadline {
-            if now <= deadline {
-                return true;
-            }
+        if let Some(deadline) = self.deadline
+            && now <= deadline
+        {
+            return true;
         }
         // Start or reset confirmation window.
         self.deadline = Some(now + self.timeout);
@@ -40,10 +40,10 @@ impl ConfirmCtrlD {
 
     /// Clear the confirmation state if the deadline has passed.
     pub fn expire(&mut self, now: Instant) {
-        if let Some(deadline) = self.deadline {
-            if now > deadline {
-                self.deadline = None;
-            }
+        if let Some(deadline) = self.deadline
+            && now > deadline
+        {
+            self.deadline = None;
         }
     }
 

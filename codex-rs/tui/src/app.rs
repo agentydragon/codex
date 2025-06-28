@@ -83,15 +83,17 @@ fn parse_mount_add_args(
     let mut mode = "rw".to_string();
     for token in raw.split_whitespace() {
         let mut parts = token.splitn(2, '=');
-        let key = parts.next().unwrap();
+        let key = parts
+            .next()
+            .ok_or_else(|| "missing argument key".to_string())?;
         let value = parts
             .next()
-            .ok_or_else(|| format!("invalid argument '{}'", token))?;
+            .ok_or_else(|| format!("invalid argument '{token}'"))?;
         match key {
             "host" => host = Some(std::path::PathBuf::from(value)),
             "container" => container = Some(std::path::PathBuf::from(value)),
             "mode" => mode = value.to_string(),
-            _ => return Err(format!("unknown argument '{}'", key)),
+            _ => return Err(format!("unknown argument '{key}'")),
         }
     }
     let host = host.ok_or_else(|| "missing 'host' argument".to_string())?;
@@ -104,14 +106,16 @@ fn parse_mount_remove_args(raw: &str) -> Result<std::path::PathBuf, String> {
     let mut container = None;
     for token in raw.split_whitespace() {
         let mut parts = token.splitn(2, '=');
-        let key = parts.next().unwrap();
+        let key = parts
+            .next()
+            .ok_or_else(|| "missing argument key".to_string())?;
         let value = parts
             .next()
-            .ok_or_else(|| format!("invalid argument '{}'", token))?;
+            .ok_or_else(|| format!("invalid argument '{token}'"))?;
         if key == "container" {
             container = Some(std::path::PathBuf::from(value));
         } else {
-            return Err(format!("unknown argument '{}'", key));
+            return Err(format!("unknown argument '{key}'"));
         }
     }
     container.ok_or_else(|| "missing 'container' argument".to_string())
@@ -301,7 +305,6 @@ impl<'a> App<'a> {
     }
 
     /// Override the session ID for this UI instance (useful for session-resume).
-
     /// Returns the session ID assigned by the backend for this session, if available.
     pub fn session_id(&self) -> Option<Uuid> {
         self.session_id
@@ -320,10 +323,11 @@ impl<'a> App<'a> {
             // Expire pending Ctrl+D confirmation and clear any prompt overlay.
             let now = Instant::now();
             self.confirm_ctrl_d.expire(now);
-            if self.config.tui.require_double_ctrl_d && !self.confirm_ctrl_d.is_confirming() {
-                if let AppState::Chat { widget } = &mut self.app_state {
-                    widget.clear_exit_confirmation_prompt();
-                }
+            if self.config.tui.require_double_ctrl_d
+                && !self.confirm_ctrl_d.is_confirming()
+                && let AppState::Chat { widget } = &mut self.app_state
+            {
+                widget.clear_exit_confirmation_prompt();
             }
             match event {
                 AppEvent::Redraw => {
@@ -352,19 +356,19 @@ impl<'a> App<'a> {
                             Ok(mut child) => {
                                 if let Some(stdout) = child.stdout.take() {
                                     let reader = BufReader::new(stdout);
-                                    for line in reader.lines().flatten() {
-                                        let _ = tx.send(AppEvent::LatestLog(line));
+                                    for line in reader.lines().map_while(Result::ok) {
+                                        tx.send(AppEvent::LatestLog(line));
                                     }
                                 }
                                 let _ = child.wait();
                             }
                             Err(err) => {
-                                let _ = tx.send(AppEvent::LatestLog(format!(
+                                tx.send(AppEvent::LatestLog(format!(
                                     "Failed to spawn inspect-env: {err}"
                                 )));
                             }
                         }
-                        let _ = tx.send(AppEvent::Redraw);
+                        tx.send(AppEvent::Redraw);
                     });
                 }
                 AppEvent::MountAdd {
@@ -498,8 +502,7 @@ impl<'a> App<'a> {
                         if let AppState::Chat { widget } = &mut self.app_state {
                             widget.push_inspect_env();
                         }
-                        let _ = self
-                            .app_event_tx
+                        self.app_event_tx
                             .send(AppEvent::InlineInspectEnv(String::new()));
                     }
                     SlashCommand::Init => {

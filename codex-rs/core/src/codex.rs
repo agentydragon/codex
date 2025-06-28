@@ -46,6 +46,7 @@ use crate::error::Result as CodexResult;
 use crate::error::SandboxErr;
 use crate::exec::ExecParams;
 use crate::exec::ExecToolCallOutput;
+use crate::exec::SIGKILL_CODE;
 use crate::exec::SandboxType;
 use crate::exec::process_exec_tool_call;
 use crate::exec_env::create_env;
@@ -1477,6 +1478,16 @@ async fn handle_container_exec_with_params(
                 output: FunctionCallOutputPayload {
                     content,
                     success: Some(is_success),
+                },
+            }
+        }
+        Err(CodexErr::Sandbox(SandboxErr::Signal(SIGKILL_CODE))) => {
+            // User aborted the command via Ctrl-C; return a tool response so sequence continues
+            ResponseInputItem::FunctionCallOutput {
+                call_id: call_id.clone(),
+                output: FunctionCallOutputPayload {
+                    content: "exec command aborted by user".to_string(),
+                    success: Some(false),
                 },
             }
         }

@@ -1,3 +1,4 @@
+#![allow(clippy::collapsible_if)]
 use crate::cell_widget::CellWidget;
 use crate::history_cell::CommandOutput;
 use crate::history_cell::HistoryCell;
