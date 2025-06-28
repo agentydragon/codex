@@ -57,6 +57,46 @@ def _launch_cmd_in_tmux(label: str, cmd: list[str], cwd: Path) -> None:
     click.echo(f"Attach with: tmux attach -t {session}")
 
 
+def _launch_cmds_in_tmux(
+    session_suffix: str, label_cmds: list[tuple[str, list[str]]], cwd: Path
+) -> None:
+    """Launch multiple commands in one detached tmux session with separate windows."""
+    session = f"agentydragon-{session_suffix}"
+    for idx, (label, cmd) in enumerate(label_cmds):
+        wrapper = shlex.join(cmd) + "; exec $SHELL"
+        if idx == 0:
+            tmux_cmd = [
+                "tmux",
+                "new-session",
+                "-d",
+                "-s",
+                session,
+                "-n",
+                label,
+                "bash",
+                "-lc",
+                wrapper,
+            ]
+        else:
+            tmux_cmd = [
+                "tmux",
+                "new-window",
+                "-t",
+                session,
+                "-n",
+                label,
+                "bash",
+                "-lc",
+                wrapper,
+            ]
+        click.echo(
+            f"Launching {label} in tmux session '{session}' (pane will remain open)"
+        )
+        click.echo(f"> tmux command: {' '.join(shlex.quote(arg) for arg in tmux_cmd)}")
+        subprocess.check_call(tmux_cmd, cwd=str(cwd))
+    click.echo(f"Attach with: tmux attach -t {session}")
+
+
 # Styling configuration for task statuses
 STATUS_COLORS: dict[str, dict[str, str]] = {
     TaskStatus.NOT_STARTED.value: {"fg": "reset"},
@@ -128,8 +168,7 @@ def status(timings: bool):
     deps_map: dict[str, list[str]] = {}
     for tid, meta in all_meta.items():
         deps_map[tid] = [
-            d for d in meta.dependencies
-            if d in all_meta and d not in merged_ids
+            d for d in meta.dependencies if d in all_meta and d not in merged_ids
         ]
 
     # Topologically sort tasks by dependencies, fall back on filename order on error
@@ -600,10 +639,7 @@ def workflow():
     # dependencies for unblocked
     merged_ids = {tid for tid, m in all_meta.items() if m.status == TaskStatus.MERGED}
     for tid, meta in all_meta.items():
-        deps = [
-            d for d in meta.dependencies
-            if d in all_meta and d not in merged_ids
-        ]
+        deps = [d for d in meta.dependencies if d in all_meta and d not in merged_ids]
         deps_map[tid] = deps
         if meta.status not in (TaskStatus.MERGED,) and not deps:
             unblocked.append(tid)
@@ -630,27 +666,13 @@ def workflow():
                 click.echo(f" {prefix} {tid} - {all_meta[tid].title}")
             click.echo("")
         if selected:
-            click.echo("Launching Commit agents in parallel for selected tasks:")
-            procs: list[tuple[str, subprocess.Popen]] = []
-            # Use external launch_commit_agent script to run in separate processes
+            click.echo("Launching Commit agents in background tmux session:")
             script = repo_root() / "agentydragon" / "tools" / "launch_commit_agent.py"
-            for tid in selected:
-                click.echo(f"  - {tid}")
-                p = subprocess.Popen(
-                    [sys.executable, str(script), tid],
-                    cwd=str(repo_root()),
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                procs.append((tid, p))
-            # Collect results
-            for tid, p in procs:
-                ret = p.wait()
-                if ret != 0:
-                    click.echo(
-                        f"Commit agent for {tid} exited with status {ret}", err=True
-                    )
-                    commit_failures.append((tid, f"exit {ret}"))
+            commit_cmds = [
+                (f"commit/{tid}", [sys.executable, str(script), tid])
+                for tid in selected
+            ]
+            _launch_cmds_in_tmux("commit", commit_cmds, root)
 
     # 1a. Fixer phase: if any commit agents failed, offer a full-auto Dev agent to fix errors using multi-select
     if commit_failures:
@@ -673,17 +695,18 @@ def workflow():
                 prefix = "[*]" if tid in fixes else "  *"
                 click.echo(f" {prefix} {tid}: {err}")
             click.echo("")
+
         if fixes and click.confirm(
             "Launch full-auto Dev agent for selected tasks?", default=True
         ):
-            # Launch Dev fix agents in background tmux sessions
+            # Launch full-auto Dev fix agents in background tmux session
             script = repo_root() / "agentydragon" / "tools" / "create_task_worktree.py"
-            for tid, err in commit_failures:
-                if tid not in fixes:
-                    continue
-                label = f"fix/{tid}"
-                cmd = [sys.executable, str(script), "--agent", tid]
-                _launch_cmd_in_tmux(label, cmd, root)
+            fix_cmds = [
+                (f"fix/{tid}", [sys.executable, str(script), "--agent", tid])
+                for tid, err in commit_failures
+                if tid in fixes
+            ]
+            _launch_cmds_in_tmux("fix", fix_cmds, root)
     # 2. Merge ready branches
     for tid, bname in ready:
         # Check if branch would merge cleanly via git merge-tree (no working-tree changes)
@@ -815,13 +838,15 @@ def workflow():
                 prefix = "[*]" if tid in selected_unblocked else "  *"
                 click.echo(f" {prefix} {tid} - {all_meta[tid].title}")
             click.echo("")
+
     if selected_unblocked:
-        click.echo("Launching Developer agents in background tmux sessions:")
+        click.echo("Launching Developer agents in background tmux session:")
         script = repo_root() / "agentydragon" / "tools" / "create_task_worktree.py"
-        for tid in selected_unblocked:
-            label = f"develop/{tid}"
-            cmd = [sys.executable, str(script), "--agent", tid]
-            _launch_cmd_in_tmux(label, cmd, root)
+        dev_cmds = [
+            (f"develop/{tid}", [sys.executable, str(script), "--agent", tid])
+            for tid in selected_unblocked
+        ]
+        _launch_cmds_in_tmux("develop", dev_cmds, root)
 
     # Re-sort tasks for the final status report (fallback to filename order on error)
     try:

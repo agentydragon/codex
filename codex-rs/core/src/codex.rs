@@ -981,11 +981,18 @@ async fn run_task(sess: Arc<Session>, sub_id: String, input: Vec<InputItem>) {
             }
             Err(e) => {
                 info!("Turn error: {e:#}");
+                // Record API/turn errors in the session rollout log
+                let err_text = e.to_string();
+                sess.record_conversation_items(&[ResponseItem::Message {
+                    role: "error".into(),
+                    content: vec![ContentItem::OutputText {
+                        text: err_text.clone(),
+                    }],
+                }])
+                .await;
                 let event = Event {
                     id: sub_id.clone(),
-                    msg: EventMsg::Error(ErrorEvent {
-                        message: e.to_string(),
-                    }),
+                    msg: EventMsg::Error(ErrorEvent { message: err_text }),
                 };
                 sess.tx_event.send(event).await.ok();
                 return;

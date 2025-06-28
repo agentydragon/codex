@@ -211,21 +211,51 @@ pub struct Colors {
     pub diff_other: String,
 }
 
-fn default_context_high() -> String { "Green".to_string() }
-fn default_context_medium() -> String { "Yellow".to_string() }
-fn default_context_low() -> String { "Red".to_string() }
-fn default_scroll_thumb_active() -> String { "LightYellow".to_string() }
-fn default_scroll_thumb_inactive() -> String { "Gray".to_string() }
-fn default_scroll_track() -> String { "DarkGray".to_string() }
-fn default_popup_fg() -> String { "LightBlue".to_string() }
-fn default_popup_bg() -> String { "DarkGray".to_string() }
-fn default_exec_success() -> String { "Green".to_string() }
-fn default_exec_failure() -> String { "Red".to_string() }
-fn default_exec_timing() -> String { "Gray".to_string() }
-fn default_diff_add() -> String { "Green".to_string() }
-fn default_diff_remove() -> String { "Red".to_string() }
-fn default_diff_modify() -> String { "Yellow".to_string() }
-fn default_diff_other() -> String { "Cyan".to_string() }
+fn default_context_high() -> String {
+    "Green".to_string()
+}
+fn default_context_medium() -> String {
+    "Yellow".to_string()
+}
+fn default_context_low() -> String {
+    "Red".to_string()
+}
+fn default_scroll_thumb_active() -> String {
+    "LightYellow".to_string()
+}
+fn default_scroll_thumb_inactive() -> String {
+    "Gray".to_string()
+}
+fn default_scroll_track() -> String {
+    "DarkGray".to_string()
+}
+fn default_popup_fg() -> String {
+    "LightBlue".to_string()
+}
+fn default_popup_bg() -> String {
+    "DarkGray".to_string()
+}
+fn default_exec_success() -> String {
+    "Green".to_string()
+}
+fn default_exec_failure() -> String {
+    "Red".to_string()
+}
+fn default_exec_timing() -> String {
+    "Gray".to_string()
+}
+fn default_diff_add() -> String {
+    "Green".to_string()
+}
+fn default_diff_remove() -> String {
+    "Red".to_string()
+}
+fn default_diff_modify() -> String {
+    "Yellow".to_string()
+}
+fn default_diff_other() -> String {
+    "Cyan".to_string()
+}
 
 impl Default for Colors {
     fn default() -> Self {
