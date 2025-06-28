@@ -5,7 +5,7 @@ status = "open"
 freeform_status = ""
 dependencies = [] # Manager rationale: tests existing config-change dialog; no prerequisite tasks
 last_updated = "2025-06-26T06:30:00Z"
-+++
+> *This task is specific to codex-rs.*
 
 # Task 46: Test config change confirm dialog upon runtime config updates
 

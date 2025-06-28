@@ -5,7 +5,7 @@ status = "open"
 freeform_status = ""
 dependencies = [] # Manager rationale: standalone debugging command feature; no dependencies
 last_updated = "2025-06-26T06:30:00Z"
-+++
+> *This task is specific to codex-rs.*
 
 # Task 49: Slash-command for debugging: show logs, session ID, and API request/response paths
 

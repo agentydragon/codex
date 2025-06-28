@@ -5,7 +5,7 @@ status = "open"
 freeform_status = ""
 dependencies = [15, 17] # Rationale: depends on Tasks 15 and 17 for sandbox configuration and pre-commit permission handling
 last_updated = "2025-06-25T01:40:09.600000"
-+++
+> *This task is specific to codex-rs.*
 
 ## Summary
 Implement a unified retry‑without‑sandbox prompt in the Rust TUI with one‑shot, session‑scoped, and persistent options.

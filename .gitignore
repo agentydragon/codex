@@ -61,7 +61,7 @@ yarn-error.log*
 oaipkg/
  
 # Ignore task worktree directories created by create-task-worktree.sh
-agentydragon/tasks/.worktrees/
+tasks/.worktrees/
 !.env.example
 
 # package
