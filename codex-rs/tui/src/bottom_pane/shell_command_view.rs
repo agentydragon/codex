@@ -1,9 +1,16 @@
-use crossterm::event::{Event as CrosstermEvent, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::Event as CrosstermEvent;
+use crossterm::event::KeyCode;
+use crossterm::event::KeyEvent;
+use crossterm::event::KeyModifiers;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::prelude::Widget;
-use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
-use tui_input::{Input, backend::crossterm::EventHandler};
+use ratatui::widgets::Block;
+use ratatui::widgets::BorderType;
+use ratatui::widgets::Borders;
+use ratatui::widgets::Paragraph;
+use tui_input::Input;
+use tui_input::backend::crossterm::EventHandler;
 
 use super::BottomPane;
 use super::BottomPaneView;
@@ -81,8 +88,11 @@ mod tests {
     use super::*;
     use crate::app_event::AppEvent;
     use crate::app_event_sender::AppEventSender;
-    use crate::bottom_pane::{BottomPane, BottomPaneParams};
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use crate::bottom_pane::BottomPane;
+    use crate::bottom_pane::BottomPaneParams;
+    use crossterm::event::KeyCode;
+    use crossterm::event::KeyEvent;
+    use crossterm::event::KeyModifiers;
     use std::sync::mpsc;
 
     #[test]

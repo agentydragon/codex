@@ -26,6 +26,10 @@ pub struct Prompt {
     /// Optional instructions from the user to amend to the built-in agent
     /// instructions.
     pub user_instructions: Option<String>,
+    /// Optional override of built-in system prompt (`prompt.md`).
+    /// Behaves like the `CODEX_BASE_INSTRUCTIONS_FILE` environment variable,
+    /// but can be set in config.toml.
+    pub base_instructions_file: Option<String>,
     /// Whether to store response on server side (disable_response_storage = !store).
     pub store: bool,
 
@@ -37,29 +41,29 @@ pub struct Prompt {
 
 impl Prompt {
     /// Assemble the system prompt sent to the model, in order:
-    /// 1. Base instructions (built-in prompt.md), unless disabled via
-    ///    the CODEX_DISABLE_BASE_INSTRUCTIONS env var.
-    /// 2. Or, if CODEX_BASE_INSTRUCTIONS_FILE is set, load that file instead of the built-in prompt.
+    /// 1. Base instructions (built-in prompt.md), unless overridden.
+    /// 2. If `base_instructions_file` is set in config or `CODEX_BASE_INSTRUCTIONS_FILE` env var,
+    ///    load that file instead of the built-in prompt (env var overrides config).
     /// 3. User instructions (e.g. from instructions.md and AGENTS.md), if any.
     /// 4. Apply-patch tool instructions when using GPT-4.1 models.
     pub(crate) fn get_full_instructions(&self, model: &str) -> Cow<'_, str> {
-        // Determine base instructions or override/disable via CODEX_BASE_INSTRUCTIONS_FILE
+        // Determine base instructions or override/disable via config or env var (env overrides config)
+        let base_override = std::env::var("CODEX_BASE_INSTRUCTIONS_FILE")
+            .ok()
+            .or_else(|| self.base_instructions_file.clone());
         let mut sections = Vec::new();
-        match std::env::var("CODEX_BASE_INSTRUCTIONS_FILE") {
-            Ok(ref path) if !path.is_empty() && path != "-" => {
+        match base_override {
+            Some(ref path) if !path.is_empty() && path != "-" => {
                 // Override built-in prompt: read file or abort
                 let contents = std::fs::read_to_string(path).unwrap_or_else(|e| {
-                    panic!(
-                        "failed to read CODEX_BASE_INSTRUCTIONS_FILE '{}': {e}",
-                        path
-                    )
+                    panic!("failed to read base instructions override '{}': {e}", path)
                 });
                 sections.push(contents);
             }
-            Ok(_) => {
+            Some(_) => {
                 // Explicitly disabled (empty or "-"): skip base instructions
             }
-            Err(_) => {
+            None => {
                 sections.push(BASE_INSTRUCTIONS.to_string());
             }
         }

@@ -1,11 +1,16 @@
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::KeyCode;
+use crossterm::event::KeyEvent;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::prelude::Widget;
-use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
+use ratatui::widgets::Block;
+use ratatui::widgets::BorderType;
+use ratatui::widgets::Borders;
+use ratatui::widgets::Paragraph;
 
+use super::BottomPane;
+use super::BottomPaneView;
 use super::bottom_pane_view::ConditionalUpdate;
-use super::{BottomPane, BottomPaneView};
 
 /// View for displaying the output of `codex inspect-env` in the bottom pane.
 pub(crate) struct InspectEnvView {

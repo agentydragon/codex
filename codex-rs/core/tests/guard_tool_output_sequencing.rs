@@ -1,5 +1,8 @@
-use codex_core::{ContentItem, FunctionCallOutputPayload, ResponseItem};
-use serde_json::{Value, json};
+use codex_core::ContentItem;
+use codex_core::FunctionCallOutputPayload;
+use codex_core::ResponseItem;
+use serde_json::Value;
+use serde_json::json;
 
 /// Reproduce the `messages` JSON construction from `stream_chat_completions`
 fn build_messages(input: Vec<ResponseItem>, _model: &str) -> Vec<Value> {

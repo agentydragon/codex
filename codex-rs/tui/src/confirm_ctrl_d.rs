@@ -1,4 +1,5 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 
 /// Helper to track and enforce double Ctrl+D confirmation within a timeout.
 pub(crate) struct ConfirmCtrlD {
@@ -55,7 +56,8 @@ impl ConfirmCtrlD {
 #[cfg(test)]
 mod tests {
     use super::ConfirmCtrlD;
-    use std::time::{Duration, Instant};
+    use std::time::Duration;
+    use std::time::Instant;
 
     #[test]
     fn exit_without_double_when_disabled() {

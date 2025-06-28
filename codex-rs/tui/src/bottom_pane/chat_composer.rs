@@ -2,7 +2,9 @@ use crossterm::event::KeyEvent;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Alignment;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style, Stylize};
+use ratatui::style::Color;
+use ratatui::style::Style;
+use ratatui::style::Stylize;
 use ratatui::text::Line;
 use ratatui::widgets::BorderType;
 use ratatui::widgets::Borders;
@@ -53,7 +55,9 @@ mod tests {
     use crate::app_event::AppEvent;
     use crate::app_event_sender::AppEventSender;
     use crate::slash_command::SlashCommand;
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use crossterm::event::KeyCode;
+    use crossterm::event::KeyEvent;
+    use crossterm::event::KeyModifiers;
     use std::sync::mpsc;
 
     #[test]

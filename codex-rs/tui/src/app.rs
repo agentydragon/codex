@@ -9,8 +9,12 @@ use crate::mouse_capture::MouseCapture;
 use crate::scroll_event_helper::ScrollEventHelper;
 use crate::slash_command::SlashCommand;
 use crate::tui;
-use codex_core::config::{Config, ConfigOverrides};
-use codex_core::protocol::{Event, EventMsg, Op, SessionConfiguredEvent};
+use codex_core::config::Config;
+use codex_core::config::ConfigOverrides;
+use codex_core::protocol::Event;
+use codex_core::protocol::EventMsg;
+use codex_core::protocol::Op;
+use codex_core::protocol::SessionConfiguredEvent;
 use color_eyre::eyre::Result;
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
@@ -24,8 +28,10 @@ use std::time::Instant;
 use codex_core::ResponseItem;
 use uuid::Uuid;
 
-use std::io::{BufRead, BufReader};
-use std::process::{Command, Stdio};
+use std::io::BufRead;
+use std::io::BufReader;
+use std::process::Command;
+use std::process::Stdio;
 use std::thread;
 
 /// Top-level application state: which full-screen view is currently active.

@@ -65,6 +65,10 @@ pub struct Config {
 
     /// User-provided instructions from instructions.md.
     pub instructions: Option<String>,
+    /// Optional override of built-in system prompt (`prompt.md`).
+    /// Behaves like the `CODEX_BASE_INSTRUCTIONS_FILE` environment variable,
+    /// but can be set in `config.toml`.
+    pub base_instructions_file: Option<String>,
 
     /// Optional external notifier command. When set, Codex will spawn this
     /// program after each completed *turn* (i.e. when the agent finishes
@@ -269,8 +273,13 @@ pub struct ConfigToml {
     #[serde(default)]
     pub notify: Option<Vec<String>>,
 
-    /// System instructions.
+    /// System instructions (from `instructions.md`).
     pub instructions: Option<String>,
+    /// Optional override of built-in system prompt (`prompt.md`).
+    /// Behaves like the `CODEX_BASE_INSTRUCTIONS_FILE` environment variable,
+    /// but can be set in `config.toml`.
+    #[serde(default)]
+    pub base_instructions_file: Option<String>,
 
     /// Definition for MCP servers that Codex can reach out to for tool calls.
     #[serde(default)]
@@ -461,6 +470,7 @@ impl Config {
                 .unwrap_or(false),
             notify: cfg.notify,
             instructions,
+            base_instructions_file: cfg.base_instructions_file.clone(),
             mcp_servers: cfg.mcp_servers,
             model_providers,
             project_doc_max_bytes: cfg.project_doc_max_bytes.unwrap_or(PROJECT_DOC_MAX_BYTES),

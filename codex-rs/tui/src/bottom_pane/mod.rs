@@ -30,7 +30,8 @@ use approval_modal_view::ApprovalModalView;
 use config_reload_view::ConfigReloadView;
 use exec_history_view::ExecHistoryView;
 use inspect_env_view::InspectEnvView;
-use mount_view::{MountAddView, MountRemoveView};
+use mount_view::MountAddView;
+use mount_view::MountRemoveView;
 use shell_command_view::ShellCommandView;
 use status_indicator_view::StatusIndicatorView;
 
@@ -194,7 +195,7 @@ impl BottomPane<'_> {
         self.active_view = Some(Box::new(view));
         self.request_redraw();
     }
-    
+
     /// Launch exec history view.
     pub fn push_exec_history(&mut self, codex_home: &std::path::PathBuf) {
         let view = ExecHistoryView::new(codex_home);
@@ -276,7 +277,9 @@ impl WidgetRef for &BottomPane<'_> {
 mod tests {
     use super::*;
     use crate::app_event::AppEvent;
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use crossterm::event::KeyCode;
+    use crossterm::event::KeyEvent;
+    use crossterm::event::KeyModifiers;
     use std::sync::mpsc;
 
     /// Construct a BottomPane with default parameters for testing.

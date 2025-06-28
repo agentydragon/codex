@@ -8,10 +8,14 @@ use codex_core::config::find_codex_home;
 use codex_exec::Cli as ExecCli;
 use codex_tui::Cli as TuiCli;
 use serde::de::Error as SerdeError;
+use std::env;
+use std::fs;
 use std::io::ErrorKind;
 use std::path::PathBuf;
-use std::{env, fs, process};
-use toml::{self, Value, value::Table};
+use std::process;
+use toml::Value;
+use toml::value::Table;
+use toml::{self};
 use uuid::Uuid;
 
 use crate::proto::ProtoCli;

@@ -415,11 +415,18 @@ Maximum number of bytes to read from an `AGENTS.md` file to include in the instr
 
 ## base_instructions_override
 
-The built-in system prompt (from `prompt.md`) can be overridden or disabled via environment variables:
+The built-in system prompt (from `prompt.md`) can be overridden or disabled via a configuration setting in `config.toml` or via an environment variable. The environment variable takes precedence over the config setting.
 
-`CODEX_BASE_INSTRUCTIONS_FILE`: If unset, the built-in prompt (`prompt.md`) is used.
-If set to a valid file path, that file's contents will be used instead (failure to read will abort).
-If set to an empty string or `-`, no system prompt will be sent.
+```toml
+base_instructions_file = "/path/to/file"  # or "-" to disable the system prompt
+```
+
+`CODEX_BASE_INSTRUCTIONS_FILE`: If set, it overrides the config value.
+
+- If its value is a valid file path, that file's contents will be used (failure to read aborts).
+- If its value is empty or `-`, no system prompt will be sent.
+
+If neither the env var nor the config setting is provided, the built-in prompt (`prompt.md`) is used.
 
 ## tui
 

@@ -1,8 +1,13 @@
 use crate::protocol::ReviewDecision;
-use serde::{Deserialize, Serialize};
-use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf};
+use serde::Deserialize;
+use serde::Serialize;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 use std::time::SystemTime;
 use uuid::Uuid;
 
@@ -42,11 +47,11 @@ impl ExecHistory {
             .create(true)
             .append(true)
             .open(&self.path)?;
-        
+
         let json = serde_json::to_string(entry)?;
         writeln!(file, "{}", json)?;
         file.sync_all()?;
-        
+
         Ok(())
     }
 
@@ -64,7 +69,7 @@ impl ExecHistory {
             if line.trim().is_empty() {
                 continue;
             }
-            
+
             match serde_json::from_str::<ExecHistoryEntry>(&line) {
                 Ok(entry) => entries.push(entry),
                 Err(e) => eprintln!("Failed to parse exec history entry: {}", e),
@@ -76,43 +81,49 @@ impl ExecHistory {
 
     pub fn query(&self, filter: ExecHistoryFilter) -> anyhow::Result<Vec<ExecHistoryEntry>> {
         let entries = self.read_all()?;
-        
-        Ok(entries.into_iter().filter(|entry| {
-            // Apply filters
-            if let Some(approved_only) = filter.approved_only {
-                let is_approved = entry.auto_approved || 
-                    matches!(entry.approval_decision, 
-                        Some(ReviewDecision::Approved) | 
-                        Some(ReviewDecision::ApprovedForSession));
-                if approved_only != is_approved {
-                    return false;
+
+        Ok(entries
+            .into_iter()
+            .filter(|entry| {
+                // Apply filters
+                if let Some(approved_only) = filter.approved_only {
+                    let is_approved = entry.auto_approved
+                        || matches!(
+                            entry.approval_decision,
+                            Some(ReviewDecision::Approved)
+                                | Some(ReviewDecision::ApprovedForSession)
+                        );
+                    if approved_only != is_approved {
+                        return false;
+                    }
                 }
-            }
-            
-            if let Some(denied_only) = filter.denied_only {
-                let is_denied = matches!(entry.approval_decision, 
-                    Some(ReviewDecision::Denied) | 
-                    Some(ReviewDecision::Abort));
-                if denied_only != is_denied {
-                    return false;
+
+                if let Some(denied_only) = filter.denied_only {
+                    let is_denied = matches!(
+                        entry.approval_decision,
+                        Some(ReviewDecision::Denied) | Some(ReviewDecision::Abort)
+                    );
+                    if denied_only != is_denied {
+                        return false;
+                    }
                 }
-            }
-            
-            if let Some(session_id) = &filter.session_id {
-                if &entry.session_id != session_id {
-                    return false;
+
+                if let Some(session_id) = &filter.session_id {
+                    if &entry.session_id != session_id {
+                        return false;
+                    }
                 }
-            }
-            
-            if let Some(contains) = &filter.contains {
-                let command_str = entry.command.join(" ").to_lowercase();
-                if !command_str.contains(&contains.to_lowercase()) {
-                    return false;
+
+                if let Some(contains) = &filter.contains {
+                    let command_str = entry.command.join(" ").to_lowercase();
+                    if !command_str.contains(&contains.to_lowercase()) {
+                        return false;
+                    }
                 }
-            }
-            
-            true
-        }).collect())
+
+                true
+            })
+            .collect())
     }
 
     pub fn get_last_n(&self, n: usize) -> anyhow::Result<Vec<ExecHistoryEntry>> {
@@ -139,10 +150,10 @@ mod tests {
     fn test_exec_history() {
         let temp_dir = TempDir::new().unwrap();
         let history = ExecHistory::new(temp_dir.path());
-        
+
         // Test empty history
         assert_eq!(history.read_all().unwrap().len(), 0);
-        
+
         // Add an entry
         let entry = ExecHistoryEntry {
             id: "test-1".to_string(),
@@ -160,9 +171,9 @@ mod tests {
                 error: None,
             }),
         };
-        
+
         history.append_entry(&entry).unwrap();
-        
+
         // Read it back
         let entries = history.read_all().unwrap();
         assert_eq!(entries.len(), 1);

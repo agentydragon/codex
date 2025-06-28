@@ -15,8 +15,11 @@ use codex_core::util::is_inside_git_repo;
 use codex_login::try_read_openai_api_key;
 use log_layer::TuiLogLayer;
 use serde_json;
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader};
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::fs::{self};
+use std::io::BufRead;
+use std::io::BufReader;
 use std::path::PathBuf;
 use tracing_appender::non_blocking;
 use tracing_subscriber::EnvFilter;
@@ -222,7 +225,10 @@ fn run_ratatui_app(
         let app_event_tx = app.event_sender();
         let config_path = config.codex_home.join("config.toml");
         std::thread::spawn(move || {
-            use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+            use notify::EventKind;
+            use notify::RecommendedWatcher;
+            use notify::RecursiveMode;
+            use notify::Watcher;
             use std::sync::mpsc::channel;
             use std::time::Duration;
             let (tx, rx) = channel();

@@ -500,7 +500,7 @@ impl ChatWidget<'_> {
         self.bottom_pane.push_exec_history(&self.config.codex_home);
         self.request_redraw();
     }
-    
+
     /// Launch interactive shell-command dialog.
     pub fn push_shell_command_interactive(&mut self) {
         self.bottom_pane.push_shell_command_interactive();

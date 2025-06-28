@@ -37,7 +37,8 @@ use crate::WireApi;
 use crate::client::ModelClient;
 use crate::client_common::Prompt;
 use crate::client_common::ResponseEvent;
-use crate::config::{AutoAllowPredicate, Config};
+use crate::config::AutoAllowPredicate;
+use crate::config::Config;
 use crate::config_types::ShellEnvironmentPolicy;
 use crate::conversation_history::ConversationHistory;
 use crate::error::CodexErr;
@@ -48,7 +49,9 @@ use crate::exec::ExecToolCallOutput;
 use crate::exec::SandboxType;
 use crate::exec::process_exec_tool_call;
 use crate::exec_env::create_env;
-use crate::exec_history::{ExecHistory, ExecHistoryEntry, ExecResult};
+use crate::exec_history::ExecHistory;
+use crate::exec_history::ExecHistoryEntry;
+use crate::exec_history::ExecResult;
 use crate::flags::OPENAI_STREAM_MAX_RETRIES;
 use crate::mcp_connection_manager::McpConnectionManager;
 use crate::mcp_connection_manager::try_parse_fully_qualified_tool_name;
@@ -83,11 +86,12 @@ use crate::protocol::SessionConfiguredEvent;
 use crate::protocol::Submission;
 use crate::protocol::TaskCompleteEvent;
 use crate::rollout::RolloutRecorder;
+use crate::safety::AutoAllowVote;
 use crate::safety::SafetyCheck;
+use crate::safety::assess_command_safety;
 use crate::safety::assess_patch_safety;
-use crate::safety::{
-    AutoAllowVote, assess_command_safety, evaluate_auto_allow_predicates, get_platform_sandbox,
-};
+use crate::safety::evaluate_auto_allow_predicates;
+use crate::safety::get_platform_sandbox;
 use crate::user_notification::UserNotification;
 use crate::util::backoff;
 
@@ -178,6 +182,7 @@ pub(crate) struct Session {
     /// instead of `std::env::current_dir()`.
     cwd: PathBuf,
     instructions: Option<String>,
+    base_instructions_file: Option<String>,
     approval_policy: AskForApproval,
     /// External predicate scripts for auto-approval or rejection of shell commands.
     pub auto_allow: Vec<AutoAllowPredicate>,
@@ -665,6 +670,7 @@ async fn submission_loop(
                     tx_event: tx_event.clone(),
                     ctrl_c: Arc::clone(&ctrl_c),
                     instructions,
+                    base_instructions_file: config.base_instructions_file.clone(),
                     approval_policy,
                     auto_allow: config.auto_allow.clone(),
                     sandbox_policy,
@@ -1018,6 +1024,7 @@ async fn run_turn(
         input,
         prev_id,
         user_instructions: sess.instructions.clone(),
+        base_instructions_file: sess.base_instructions_file.clone(),
         store,
         extra_tools,
     };
@@ -1351,7 +1358,7 @@ async fn handle_container_exec_with_params(
                 .await;
             let decision = rx_approve.await.unwrap_or_default();
             exec_entry.approval_decision = Some(decision.clone());
-            
+
             match decision {
                 ReviewDecision::Approved => (),
                 ReviewDecision::ApprovedForSession => {
@@ -1397,7 +1404,7 @@ async fn handle_container_exec_with_params(
     if let Err(e) = sess.exec_history.append_entry(&exec_entry) {
         warn!("Failed to log exec history: {}", e);
     }
-    
+
     sess.notify_exec_command_begin(&sub_id, &call_id, &params)
         .await;
 
@@ -1412,7 +1419,7 @@ async fn handle_container_exec_with_params(
     .await;
 
     let execution_duration = start_time.elapsed();
-    
+
     match output_result {
         Ok(output) => {
             let ExecToolCallOutput {
@@ -1421,7 +1428,7 @@ async fn handle_container_exec_with_params(
                 stderr,
                 duration,
             } = output;
-            
+
             // Update exec history with result
             exec_entry.execution_result = Some(ExecResult {
                 exit_code: Some(exit_code),

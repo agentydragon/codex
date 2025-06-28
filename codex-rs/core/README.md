@@ -13,6 +13,7 @@ Codex composes the initial system message that seeds every chat completion turn 
 5. Finally, the user's command or prompt is sent as the first user message.
 
 This “system” prompt is delivered to the OpenAI Chat Completions API as the very first message with role `system` in the JSON `messages` array, e.g.:
+
 ```json
 {
   "model": "gpt-4.1",
@@ -26,11 +27,18 @@ This “system” prompt is delivered to the OpenAI Chat Completions API as the 
 }
 ```
 
-The base instructions behavior can be customized with `CODEX_BASE_INSTRUCTIONS_FILE`:
+The base instructions behavior can be customized via `config.toml` or the `CODEX_BASE_INSTRUCTIONS_FILE` env var (env overrides config):
 
-- If unset, the built-in prompt (`prompt.md`) is used.
-- If set to a valid file path, that file's contents will be used instead (failure to read will abort).
-- If set to an empty string or `-`, no system prompt will be sent.
+```toml
+base_instructions_file = "/path/to/file"  # or "-" to disable the system prompt
+```
+
+Environment variable `CODEX_BASE_INSTRUCTIONS_FILE` takes precedence:
+
+- If its value is a valid file path, that file's contents will be used (failure to read aborts).
+- If its value is empty or `-`, no system prompt will be sent.
+
+If neither the env var nor config setting is provided, the built-in prompt (`prompt.md`) is used.
 
 For implementation details, see `client_common.rs` and `project_doc.rs`.
 

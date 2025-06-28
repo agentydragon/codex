@@ -1,7 +1,8 @@
-use codex_core::{ContentItem, ResponseItem};
-use codex_tui::context::{
-    approximate_tokens_used, calculate_context_percent_remaining, max_tokens_for_model,
-};
+use codex_core::ContentItem;
+use codex_core::ResponseItem;
+use codex_tui::context::approximate_tokens_used;
+use codex_tui::context::calculate_context_percent_remaining;
+use codex_tui::context::max_tokens_for_model;
 
 #[test]
 fn test_approximate_tokens_used_texts() {
