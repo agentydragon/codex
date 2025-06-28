@@ -185,7 +185,6 @@ the network enabled, once we're confident in additional safeguards.
 The hardening mechanism Codex uses depends on your OS:
 
 - **macOS 12+** - commands are wrapped with **Apple Seatbelt** (`sandbox-exec`).
-
   - Everything is placed in a read-only jail except for a small set of
     writable roots (`$PWD`, `$TMPDIR`, `~/.codex`, etc.).
   - Outbound network is _fully blocked_ by default - even if a child process
@@ -570,18 +569,18 @@ More broadly we welcome contributions - whether you are opening your very first 
 #### Interactive orchestrator workflow
 
 - Use `agentydragon_task.py workflow` to interactively:
--   launch commit agents and fixer agents for dirty tasks
--   merge ready branches (with dry‑run conflict detection and optional merge‑conflict‑resolution agent)
--   rebase feature branches onto the latest integration branch (interactive Rebase agent via `--rebase` flag **plus** `-s disk-write-folder=<worktree>/.git`)
--   dispose completed task branches and worktrees
--   launch Developer agents for unblocked tasks
-in a single session. See `agentydragon/WORKFLOW.md` for an illustrated example of the +xx/–xx/ok multi-select UI and merge workflow.
+- launch commit agents and fixer agents for dirty tasks
+- merge ready branches (with dry‑run conflict detection and optional merge‑conflict‑resolution agent)
+- rebase feature branches onto the latest integration branch (interactive Rebase agent via `--rebase` flag **plus** `-s disk-write-folder=<worktree>/.git`)
+- dispose completed task branches and worktrees
+- launch Developer agents for unblocked tasks
+  in a single session. See `agentydragon/WORKFLOW.md` for an illustrated example of the +xx/–xx/ok multi-select UI and merge workflow.
 
 - Use `agentydragon_task.py status` to view tasks (including those in `.done/`).
 - Summaries:
--   - **Merged:** tasks with no branch/worktree.
--   - **Ready to merge:** tasks marked Done with branch commits ahead.
--   - **Unblocked:** tasks with no outstanding dependencies.
+- - **Merged:** tasks with no branch/worktree.
+- - **Ready to merge:** tasks marked Done with branch commits ahead.
+- - **Unblocked:** tasks with no outstanding dependencies.
 - The workflow also prints a `agentydragon/tools/create_task_worktree.py --agent|--rebase --tmux <IDs>` command for all unblocked tasks.
 
 ### Git hooks with Husky
