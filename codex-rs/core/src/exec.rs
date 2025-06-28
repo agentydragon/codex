@@ -121,7 +121,11 @@ pub async fn process_exec_tool_call(
                 StdioPolicy::RedirectForShellTool,
                 env,
             )
-            .await?;
+            .await
+            .map_err(|err| match err.kind() {
+                io::ErrorKind::NotFound => CodexErr::LandlockSandboxExecutableNotProvided,
+                _ => err.into(),
+            })?;
 
             consume_truncated_output(child, ctrl_c, timeout_ms).await
         }

@@ -74,7 +74,8 @@ pub enum CodexErr {
     #[error("sandbox error: {0}")]
     Sandbox(#[from] SandboxErr),
 
-    #[error("codex-linux-sandbox was required but not provided")]
+    #[error("`codex-linux-sandbox` helper is required for Linux sandboxing but was not found or provided. \
+Please install `codex-linux-sandbox` and/or specify its path with `--codex-linux-sandbox-exe`." )]
     LandlockSandboxExecutableNotProvided,
 
     // -----------------------------------------------------------------
@@ -130,5 +131,19 @@ impl CodexErr {
     /// `anyhow::Error::downcast_ref` but works directly on our concrete enum.
     pub fn downcast_ref<T: std::any::Any>(&self) -> Option<&T> {
         (self as &dyn std::any::Any).downcast_ref::<T>()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CodexErr;
+
+    #[test]
+    fn landlock_sandbox_executable_error_msg() {
+        let msg = CodexErr::LandlockSandboxExecutableNotProvided.to_string();
+        assert!(msg.contains("codex-linux-sandbox helper"),
+            "unexpected error message: {}", msg);
+        assert!(msg.contains("--codex-linux-sandbox-exe"),
+            "error message should mention flag: {}", msg);
     }
 }
