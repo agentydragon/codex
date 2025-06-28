@@ -14,12 +14,12 @@ def repo_root() -> Path:
 
 
 def tasks_dir() -> Path:
-    """Path to the agentydragon/tasks directory."""
-    return repo_root() / "agentydragon" / "tasks"
+    """Path to the tasks directory in the repo root."""
+    return repo_root() / "tasks"
 
 
 def worktrees_dir() -> Path:
-    """Path to the agentydragon/tasks/.worktrees directory."""
+    """Path to the .worktrees directory under tasks."""
     return tasks_dir() / ".worktrees"
 
 

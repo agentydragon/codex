@@ -14,7 +14,8 @@ from pathlib import Path
 import click
 import pygit2
 from tabulate import tabulate
-from tasklib import (
+# noqa: E501
+from agentydragon_tasks.agentydragon_tasks.tasklib import (
     TaskMeta,
     TaskStatus,
     find_task_file,

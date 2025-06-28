@@ -10,7 +10,7 @@ import re
 import sys
 from pathlib import Path
 
-from manager_utils.tasklib import task_dir, worktree_dir, load_task
+from agentydragon_tasks.agentydragon_tasks.tasklib import task_dir, worktree_dir, load_task
 
 
 def skip_path(p: Path) -> bool:

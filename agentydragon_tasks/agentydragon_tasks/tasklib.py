@@ -24,7 +24,7 @@ def repo_root():
 
 
 def task_dir():
-    return repo_root() / "agentydragon/tasks"
+    return repo_root() / "tasks"
 
 
 def worktree_dir():

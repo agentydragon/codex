@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 import click
-from common import (
+from agentydragon_tasks.agentydragon_tasks.common import (
     repo_root,
     resolve_slug,
     tasks_dir,

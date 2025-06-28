@@ -20,9 +20,9 @@ dev = [
 ]
 
 [project.scripts]
-agentydragon-create-task-worktree = "agentydragon_tasks.tools.create_task_worktree:main"
-agentydragon-check-tasks = "agentydragon_tasks.tools.check_tasks:main"
-agentydragon-launch-commit-agent = "agentydragon_tasks.tools.launch_commit_agent:main"
-agentydragon-launch-project-manager = "agentydragon_tasks.tools.launch_project_manager:main"
-agentydragon-task = "agentydragon_tasks.tools.task:cli"
-tasks = "agentydragon_tasks.tools.task:cli"
+agentydragon-create-task-worktree = "agentydragon_tasks.agentydragon_tasks.create_task_worktree:main"
+agentydragon-check-tasks = "agentydragon_tasks.agentydragon_tasks.check_tasks:main"
+agentydragon-launch-commit-agent = "agentydragon_tasks.agentydragon_tasks.launch_commit_agent:main"
+agentydragon-launch-project-manager = "agentydragon_tasks.agentydragon_tasks.launch_project_manager:main"
+agentydragon-task = "agentydragon_tasks.agentydragon_tasks.task:cli"
+tasks = "agentydragon_tasks.agentydragon_tasks.task:cli"
