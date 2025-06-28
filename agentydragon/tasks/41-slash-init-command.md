@@ -13,17 +13,17 @@ last_updated = "2025-06-25T11:23:30Z"
 
 ## Acceptance Criteria
 
-- Typing `/init` in the chat composer should load the contents of `codex-rs/code/init.md` into the input buffer.
+- Typing `/init` in the chat composer should load the contents of `codex-rs/core/init.md` into the input buffer.
 - `/init` appears in the slash-command menu alongside other commands.
 - After executing `/init`, the composer shows the init prompt, ready for editing.
 
 ## Implementation
 
 - Add a new slash-command identifier `/init` in the command dispatch logic (e.g. in `ChatComposer` or equivalent).
-- On `/init`, read `codex-rs/code/init.md` (relative to the repository root) and inject its text into the composer buffer.
+- On `/init`, read `codex-rs/core/init.md` (relative to the repository root) and inject its text into the composer buffer.
 - Ensure the slash-menu and feedback UI treat `/init` consistently with other commands.
 - Write unit tests to verify that `/init` populates the composer correctly without losing focus.
 
 ## Notes
 
-Link to the init prompt source: `codex-rs/code/init.md`.
+Link to the init prompt source: `codex-rs/core/init.md`.
