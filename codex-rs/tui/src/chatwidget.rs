@@ -218,6 +218,7 @@ impl ChatWidget<'_> {
                 .add_user_message(&self.config, text);
         }
         self.conversation_history.scroll_to_bottom();
+        self.request_redraw();
     }
 
     /// Replay a previous session transcript into the conversation history.
