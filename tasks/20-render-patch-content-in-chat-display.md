@@ -7,7 +7,7 @@ dependencies = [] # Manager rationale: chat UI rendering feature; no prerequisit
 last_updated = "2025-06-25T01:41:34.738344"
 +++
 
-> *This task is specific to the chat UI renderer.*
+> *This task is specific to codex-rs.*
 
 ## Acceptance Criteria
 
