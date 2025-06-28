@@ -367,7 +367,6 @@ impl UserApprovalWidget<'_> {
     }
 }
 
-
 impl WidgetRef for &UserApprovalWidget<'_> {
     fn render_ref(&self, area: Rect, buf: &mut Buffer) {
         // Take the area, wrap it in a block with a border, and divide up the
