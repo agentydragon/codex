@@ -42,6 +42,7 @@ CLAUDE.md
 
 # Python caches and test artifacts
 __pycache__/
+**/__pycache__/
 .pytest_cache/
 
 # Local benchmarks

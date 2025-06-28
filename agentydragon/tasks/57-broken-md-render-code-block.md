@@ -1,12 +1,14 @@
++++
 id = "57"
 title = "Fix broken code-block rendering in assistant final messages"
 status = "open"
-dependencies = ["56"]
+dependencies = "56"
 last_updated = "2024-06-11T00:00:00Z"
++++
 
 # Task: Fix broken code-block rendering in assistant final messages
 
-> _This task is specific to codex-tui._
+> _This task is specific to codex-rs._
 
 ## Acceptance Criteria
 
