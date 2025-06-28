@@ -3,8 +3,9 @@
 common.py: Shared utilities for agentydragon tooling scripts.
 """
 import subprocess
-import click
 from pathlib import Path
+
+import click
 
 
 def repo_root() -> Path:
@@ -40,9 +41,9 @@ def sandbox_flags_for_worktree(worktree: Path) -> list[str]:
     Return sandbox-exec flags granting read/write access to a worktree and its Git data.
 
     git worktrees store metadata outside the worktree directory (via a .git "gitdir" file),
-    so we must explicitly whitelist both the working tree and its .git metadata folder.
+    so we must also explicitly whitelist the main repo's .git.
     """
-    gitdir = worktree / ".git"
+    gitdir = repo_root() / ".git"
     return [
         "-s",
         f"disk-read-folder={worktree}",

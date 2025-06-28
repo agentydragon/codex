@@ -11,6 +11,7 @@ from pathlib import Path
 import toml
 from enum import Enum
 from pydantic import BaseModel, Field
+from agentydragon_tasks.common import worktrees_dir as worktree_dir
 
 FRONTMATTER_RE = re.compile(r"^\+\+\+\s*(.*?)\s*\+\+\+", re.S | re.M)
 
@@ -25,10 +26,6 @@ def repo_root():
 
 def task_dir():
     return repo_root() / "tasks"
-
-
-def worktree_dir():
-    return task_dir() / ".worktrees"
 
 
 def find_task_file(task_id: str) -> Path:

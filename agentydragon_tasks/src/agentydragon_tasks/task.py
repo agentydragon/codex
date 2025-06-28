@@ -3,6 +3,7 @@ CLI for managing agentydragon tasks: status, set-status, set-deps, dispose, laun
 """
 
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -33,7 +34,6 @@ from agentydragon_tasks.tasklib import (
     repo_root,
     save_task,
     task_dir,
-    worktree_dir,
 )
 from agentydragon_tasks.common import (
     resolve_slug,
@@ -44,6 +44,9 @@ from agentydragon_tasks.common import (
     list_task_branches,
     INTEGRATION_BRANCH,
 )
+import agentydragon_tasks.prompts as prompts_mod
+from importlib import resources
+from pathlib import Path
 from agentydragon_tasks.check_tasks import main as _check_tasks
 
 # Shared helper to invoke Codex exec with a prompt in a worktree
@@ -59,6 +62,40 @@ def _launch_cmd_in_tmux(label: str, cmd: list[str], cwd: Path) -> None:
     click.echo(f"> tmux command: {' '.join(shlex.quote(arg) for arg in tmux_cmd)}")
     subprocess.check_call(tmux_cmd, cwd=str(cwd))
     click.echo(f"Attach with: tmux attach -t {session}")
+
+
+def _run(cmd: list[str], cwd: Path | None = None) -> None:
+    click.echo(f"Running: {' '.join(cmd)}")
+    subprocess.check_call(cmd, cwd=str(cwd) if cwd else None)
+
+
+def _timed_run_stage(label: str, cmd: list[str], cwd: Path | None = None) -> None:
+    click.echo(f"{label}: {' '.join(cmd)}")
+    t0 = time.monotonic()
+    _run(cmd, cwd=cwd)
+    click.echo(f"{label} completed in {time.monotonic() - t0:.3f}s")
+
+
+def _hydrate_worktree(src: Path, dst: Path) -> None:
+    """Perform filesystem hydration via CoW copy or rsync with timing and log."""
+    entries = [
+        str(src / p.name) for p in src.iterdir() if p.name not in (".worktrees", ".git")
+    ]
+    if shutil.which("cp") and sys.platform != "darwin":
+        cmd = ["cp", "--archive", "--reflink=auto"] + entries + [str(dst)]
+        method = "CoW copy"
+    else:
+        cmd = [
+            "rsync",
+            "-a",
+            "--delete",
+            "--exclude=.git/",
+            "--exclude=.worktrees/",
+            f"{src}/",
+            f"{dst}/",
+        ]
+        method = "rsync copy"
+    _timed_run_stage(f"Stage 2 hydration via {method}", cmd)
 
 
 def _launch_cmds_in_tmux(
@@ -147,7 +184,7 @@ def status(timings: bool):
         t0 = time.monotonic()
     repo = repo_root()
     for tid, md in list(path_map.items()):
-        wt_task = worktree_dir() / md.stem / md.relative_to(repo)
+        wt_task = worktrees_dir() / md.stem / md.relative_to(repo)
         if wt_task.exists():
             try:
                 wt_meta, _ = load_task(wt_task)
@@ -242,7 +279,7 @@ def status(timings: bool):
         slug = md.stem
         # Worktree cleanliness and branch status via pygit2
         wt_info = "none"
-        wt_dir = worktree_dir() / slug
+        wt_dir = worktrees_dir() / slug
         if wt_dir.exists():
             wt_start = time.monotonic() if timings else None
             try:
@@ -446,7 +483,7 @@ def set_deps(task_id, deps):
 def dispose(task_id):
     """Dispose worktree and delete branch for TASK_ID(s)"""
     root = repo_root()
-    wt_base = worktree_dir()
+    wt_base = worktrees_dir()
     for tid in task_id:
         # Remove any matching worktree directories
         g = f"{tid}-*"
@@ -513,6 +550,65 @@ def check():
     _check_tasks()
 
 
+@cli.command("start-agent")
+@click.option(
+    "--skip-presubmit",
+    is_flag=True,
+    help="Skip initial pre-commit checks in new worktree.",
+)
+@click.argument("agent_type")
+@click.argument("task_ids", nargs=-1, required=True)
+def start_agent(skip_presubmit: bool, agent_type: str, task_ids: tuple[str, ...]):
+    """Create/reuse worktree and launch Codex agent of TYPE for TASK_IDs."""
+    # alias 'develop' -> 'developer' and validate prompt exists
+    prompt_name = "developer" if agent_type == "develop" else agent_type
+    valid = {p[:-3] for p in resources.contents(prompts_mod) if p.endswith(".md")}
+    if prompt_name not in valid:
+        raise click.UsageError(
+            f"Unknown agent type {agent_type!r}; must be one of: {', '.join(sorted(valid))}"
+        )
+    for slug in task_ids:
+        branch = task_branch(slug)
+        cwd = Path.cwd()
+        # ensure task branch exists
+        if branch not in list_task_branches():
+            subprocess.check_call(
+                ["git", "branch", branch, INTEGRATION_BRANCH], cwd=cwd
+            )
+        # create or reuse worktree for branch
+        wt_base = cwd / "tasks" / ".worktrees"
+        wt_dir = wt_base / slug
+        if not (wt_env := wt_dir.exists()):
+            wt_base.mkdir(parents=True, exist_ok=True)
+            subprocess.check_call(
+                ["git", "worktree", "add", "--detach", str(wt_dir), branch],
+                cwd=cwd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            try:
+                _hydrate_worktree(cwd, wt_dir)
+            except subprocess.CalledProcessError:
+                click.echo("Hydration failed", err=True)
+            if agent_type == "develop" and not skip_presubmit:
+                if shutil.which("pre-commit"):
+                    subprocess.check_call(
+                        ["pre-commit", "run", "--all-files"], cwd=wt_dir
+                    )
+                else:
+                    click.echo(
+                        "Warning: pre-commit not installed; skipping checks", err=True
+                    )
+        # launch agent in worktree
+        # alias 'develop' -> 'developer' prompt
+        prompt_name = "developer" if agent_type == "develop" else agent_type
+        template = resources.read_text(prompts_mod, f"{prompt_name}.md")
+        prompt = template.format(integration_branch=INTEGRATION_BRANCH)
+        run_codex_exec(
+            wt_dir, prompt + f"\nTask: {slug}\n", full_auto=True, exec_mode=True
+        )
+
+
 @cli.command()
 @click.argument("task_id")
 def shell(task_id):
@@ -522,7 +618,7 @@ def shell(task_id):
     except Exception as e:
         click.echo(str(e), err=True)
         sys.exit(1)
-    wt = worktrees_dir() / slug
+        wt = worktrees_dir() / slug
     if not wt.exists():
         click.echo(f"No worktree for task {task_id}", err=True)
         sys.exit(1)
@@ -589,7 +685,7 @@ def workflow():
     for tid, md in list(path_map.items()):
         meta = all_meta[tid]
         slug = md.stem
-        wt = worktree_dir() / slug
+        wt = worktrees_dir() / slug
         # worktree status
         if wt.exists():
             st = subprocess.run(
@@ -726,7 +822,7 @@ def workflow():
                 default=True,
             ):
                 # Invoke merge-conflict-resolution agent in the task worktree
-                task_wt = worktree_dir() / path_map[tid].stem
+                task_wt = worktrees_dir() / path_map[tid].stem
                 click.echo(
                     f"Launching Merge Conflict Resolution agent for {bname} (cwd={task_wt})"
                 )
@@ -777,7 +873,7 @@ def workflow():
     for tid, _ in ready:
         meta = all_meta[tid]
         slug = path_map[tid].stem
-        wt = worktree_dir() / slug
+        wt = worktrees_dir() / slug
         # Determine if worktree has uncommitted changes
         dirty_wt = False
         if wt.exists():

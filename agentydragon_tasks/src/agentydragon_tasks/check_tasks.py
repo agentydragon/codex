@@ -10,12 +10,13 @@ import re
 import sys
 from pathlib import Path
 
-from agentydragon_tasks.tasklib import task_dir, worktree_dir, load_task
+from agentydragon_tasks.tasklib import task_dir, load_task
+from agentydragon_tasks.common import worktrees_dir
 
 
 def skip_path(p: Path) -> bool:
     """Return True for paths we should ignore in validations."""
-    wt = worktree_dir()
+    wt = worktrees_dir()
     done = task_dir() / ".done"
     if p.is_relative_to(wt) or p.is_relative_to(done):
         return True
@@ -26,7 +27,7 @@ def skip_path(p: Path) -> bool:
 
 def iter_task_markdown() -> Path:
     """Yield all task markdown files under agentydragon/tasks, pruning .worktrees and .done dirs."""
-    wt = worktree_dir()
+    wt = worktrees_dir()
     done = task_dir() / ".done"
     root = task_dir()
     for base, dirs, files in os.walk(str(root)):
