@@ -40,7 +40,7 @@ fn render_header_body(
 ) -> Vec<RtLine<'static>> {
     let mut lines = Vec::new();
     if config.tui.header_compact {
-        if let Some(first) = body.get(0) {
+        if let Some(first) = body.first() {
             let mut spans = Vec::new();
             spans.push(label.clone());
             spans.push(RtSpan::raw(" ".to_string()));
@@ -243,7 +243,7 @@ impl HistoryCell {
         } else {
             // combine sender label and first line of body, indenting subsequent lines
             let mut l = Vec::new();
-            if let Some(first) = body.get(0) {
+            if let Some(first) = body.first() {
                 let mut spans = vec![label.clone(), RtSpan::raw(" ".to_string())];
                 spans.extend(first.spans.clone());
                 l.push(RtLine::from(spans).style(first.style));
@@ -283,7 +283,7 @@ impl HistoryCell {
             l
         } else {
             let mut l = Vec::new();
-            if let Some(first) = md_lines.get(0) {
+            if let Some(first) = md_lines.first() {
                 let mut spans = vec![label.clone(), RtSpan::raw(" ".to_string())];
                 spans.extend(first.spans.clone());
                 l.push(RtLine::from(spans).style(first.style));
@@ -323,7 +323,7 @@ impl HistoryCell {
             l
         } else {
             let mut l = Vec::new();
-            if let Some(first) = md_lines.get(0) {
+            if let Some(first) = md_lines.first() {
                 let mut spans = vec![label.clone(), RtSpan::raw(" ".to_string())];
                 spans.extend(first.spans.clone());
                 l.push(RtLine::from(spans).style(first.style));
@@ -389,11 +389,11 @@ impl HistoryCell {
         // 123ms   O /bin/command/...
         //         ^-- spinning spinner
         let ann = if exit_code == 0 {
-            format!("✓ {}", timing)
+            format!("✓ {timing}")
         } else {
-            format!("✗ {} {}", exit_code, timing)
+            format!("✗ {exit_code} {timing}")
         };
-        let pad = format!("{:<9}", ann);
+        let pad = format!("{ann:<9}");
         let ann_color = if exit_code == 0 {
             Color::Green
         } else {
@@ -428,7 +428,7 @@ impl HistoryCell {
         }
         let remaining = lines_iter.count();
         if remaining > 0 {
-            lines.push(Line::from(format!("... {} additional lines", remaining)).dim());
+            lines.push(Line::from(format!("... {remaining} additional lines")).dim());
         }
         lines.push(Line::from(""));
 
@@ -850,10 +850,8 @@ fn ensure_image_cache(
     width_cells: u16,
     render_cache: &std::cell::RefCell<Option<ImageRenderCache>>,
 ) -> usize {
-    if let Some(cache) = render_cache.borrow().as_ref() {
-        if cache.width_cells == width_cells {
-            return cache.height_rows;
-        }
+if let Some(cache) = render_cache.borrow().as_ref() && cache.width_cells == width_cells {
+        return cache.height_rows;
     }
 
     let picker = &*TERMINAL_PICKER;
