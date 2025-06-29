@@ -18,11 +18,6 @@ from importlib import resources
 import agentydragon_tasks.prompts
 import pygit2
 from tabulate import tabulate
-import shutil
-import subprocess
-import sys
-import time
-from pathlib import Path
 
 # noqa: E501
 from agentydragon_tasks.tasklib import (
@@ -52,43 +47,24 @@ from agentydragon_tasks.check_tasks import main as _check_tasks
 # Shared helper to invoke Codex exec with a prompt in a worktree
 
 
+def _get_repo() -> pygit2.Repository:
+    """Get the pygit2 Repository instance for the current repo."""
+    return pygit2.Repository(str(repo_root()))
+
+
 def _launch_cmd_in_tmux(label: str, cmd: list[str], cwd: Path) -> None:
     """Launch the given command list in a detached tmux session named by label."""
     session = task_branch(label).replace("/", "-")
     # Wrap the agent invocation so the pane drops into a shell after the command finishes
     wrapper = shlex.join(cmd) + "; exec $SHELL"
-    # if session exists, open new window; else start new session with named window
-    if (
-        subprocess.run(
-            ["tmux", "has-session", "-t", session], stderr=subprocess.DEVNULL
-        ).returncode
-        == 0
-    ):
-        tmux_cmd = [
-            "tmux",
-            "new-window",
-            "-d",
-            "-t",
-            session,
-            "-n",
-            label,
-            "bash",
-            "-lc",
-            wrapper,
-        ]
-    else:
-        tmux_cmd = [
-            "tmux",
-            "new-session",
-            "-d",
-            "-s",
-            session,
-            "-n",
-            label,
-            "bash",
-            "-lc",
-            wrapper,
-        ]
+    
+    create_session = not _session_exists(session)
+    tmux_cmd = _build_tmux_command(session, label, wrapper, create_session)
+    # Note: passing "-d" flag to detach for single command (different from multi-command)
+    if not create_session:
+        # Insert "-d" flag for new-window command
+        tmux_cmd.insert(2, "-d")
+    
     click.echo(f"Launching {label} in tmux session '{session}' (pane will remain open)")
     click.echo(f"> tmux command: {' '.join(shlex.quote(arg) for arg in tmux_cmd)}")
     subprocess.check_call(tmux_cmd, cwd=str(cwd))
@@ -134,6 +110,22 @@ def _hydrate_worktree(src: Path, dst: Path) -> None:
     _timed_run_stage(f"Stage 2 hydration via {method}", cmd)
 
 
+def _build_tmux_command(session: str, label: str, wrapper: str, create_session: bool) -> list[str]:
+    """Build tmux command for creating a window or session."""
+    base_cmd = ["tmux"]
+    if create_session:
+        return base_cmd + ["new-session", "-d", "-s", session, "-n", label, "bash", "-lc", wrapper]
+    else:
+        return base_cmd + ["new-window", "-t", session, "-n", label, "bash", "-lc", wrapper]
+
+
+def _session_exists(session: str) -> bool:
+    """Check if a tmux session exists."""
+    return subprocess.run(
+        ["tmux", "has-session", "-t", session], stderr=subprocess.DEVNULL
+    ).returncode == 0
+
+
 def _launch_cmds_in_tmux(
     session_suffix: str, label_cmds: list[tuple[str, list[str]]], cwd: Path
 ) -> None:
@@ -141,50 +133,15 @@ def _launch_cmds_in_tmux(
     session = task_branch(session_suffix)
     for idx, (label, cmd) in enumerate(label_cmds):
         wrapper = shlex.join(cmd) + "; exec $SHELL"
+        
+        # First command: create session if needed, otherwise create window
         if idx == 0:
-            # reuse existing or start new session with initial window
-            if (
-                subprocess.run(
-                    ["tmux", "has-session", "-t", session], stderr=subprocess.DEVNULL
-                ).returncode
-                == 0
-            ):
-                tmux_cmd = [
-                    "tmux",
-                    "new-window",
-                    "-t",
-                    session,
-                    "-n",
-                    label,
-                    "bash",
-                    "-lc",
-                    wrapper,
-                ]
-            else:
-                tmux_cmd = [
-                    "tmux",
-                    "new-session",
-                    "-d",
-                    "-s",
-                    session,
-                    "-n",
-                    label,
-                    "bash",
-                    "-lc",
-                    wrapper,
-                ]
+            create_session = not _session_exists(session)
+            tmux_cmd = _build_tmux_command(session, label, wrapper, create_session)
         else:
-            tmux_cmd = [
-                "tmux",
-                "new-window",
-                "-t",
-                session,
-                "-n",
-                label,
-                "bash",
-                "-lc",
-                wrapper,
-            ]
+            # Subsequent commands always create new windows
+            tmux_cmd = _build_tmux_command(session, label, wrapper, create_session=False)
+        
         click.echo(
             f"Launching {label} in tmux session '{session}' (pane will remain open)"
         )
@@ -231,7 +188,7 @@ def status(timings: bool):
             continue
         all_meta[meta.id] = meta
         path_map[meta.id] = md
-    if timings:
+    if timings and start is not None:
         print(f"Loaded {len(path_map)} tasks in {time.monotonic() - start:.3f}s")
 
     # Reload from worktree copies if present (to reflect live Status in branch)
@@ -315,7 +272,7 @@ def status(timings: bool):
         t2 = time.monotonic()
         print(f"Deps & topo sort in {t2 - t1:.3f}s")
     # Initialize pygit2 for batch Git operations
-    repo = pygit2.Repository(str(repo_root()))
+    repo = _get_repo()
     integration_ref = f"refs/heads/{INTEGRATION_BRANCH}"
     integration_oid = repo.references[integration_ref].target
 
@@ -395,7 +352,7 @@ def status(timings: bool):
 
         # Style status and worktree columns
         label = meta.status.value
-        stat_disp = click.style(label, **STATUS_COLORS.get(label, {}))
+        stat_disp = click.style(label, **STATUS_COLORS.get(label, {}))  # type: ignore
         wt_disp = wt_info
         if wt_info == "dirty":
             wt_disp = click.style(wt_info, fg="red")
@@ -468,7 +425,7 @@ def status(timings: bool):
         print(
             f"\033[1mLaunch unblocked in tmux:\033[0m tasks start-agent develop --tmux {' '.join(unblocked)}"
         )
-    if timings:
+    if timings and start is not None:
         print(f"Total status time: {time.monotonic() - start:.3f}s")
 
 
