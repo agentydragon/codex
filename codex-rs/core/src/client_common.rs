@@ -54,11 +54,17 @@ impl Prompt {
         let mut sections = Vec::new();
         match base_override {
             Some(ref path) if !path.is_empty() && path != "-" => {
-                // Override built-in prompt: read file or abort
-                let contents = std::fs::read_to_string(path).unwrap_or_else(|e| {
-                    panic!("failed to read base instructions override '{}': {e}", path)
-                });
-                sections.push(contents);
+                // Override built-in prompt: read file or warn and fall back to default
+                match std::fs::read_to_string(path) {
+                    Ok(contents) => {
+                        sections.push(contents);
+                    }
+                    Err(e) => {
+                        eprintln!("Warning: failed to read base instructions override '{}': {}", path, e);
+                        eprintln!("Falling back to default base instructions");
+                        sections.push(BASE_INSTRUCTIONS.to_string());
+                    }
+                }
             }
             Some(_) => {
                 // Explicitly disabled (empty or "-"): skip base instructions

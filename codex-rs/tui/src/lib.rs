@@ -185,7 +185,15 @@ fn run_ratatui_app(
     // Forward panic reports through the tracing stack so that they appear in
     // the status indicator instead of breaking the alternate screen – the
     // normal colour‑eyre hook writes to stderr which would corrupt the UI.
+    // IMPORTANT: Also restore terminal to prevent broken state on panic.
     std::panic::set_hook(Box::new(|info| {
+        // First try to restore the terminal
+        if let Err(e) = tui::restore() {
+            // If we can't restore, at least try to print to stderr
+            eprintln!("Failed to restore terminal on panic: {}", e);
+        }
+        // Then log the panic info
+        eprintln!("panic: {}", info);
         tracing::error!("panic: {info}");
     }));
     let (mut terminal, mut mouse_capture) = tui::init(&config)?;
