@@ -613,9 +613,26 @@ def start_agent(skip_presubmit: bool, agent_type: str, task_ids: tuple[str, ...]
         # alias 'develop' -> 'developer' prompt
         prompt_name = "developer" if agent_type == "develop" else agent_type
         template = resources.read_text(prompts_mod, f"{prompt_name}.md")
-        prompt = template.format(integration_branch=INTEGRATION_BRANCH)
+        
+        # Find the actual task file
+        try:
+            task_file_path = find_task_file(slug)
+            # Get absolute path relative to worktree root
+            task_file_abs = task_file_path.relative_to(repo_root())
+        except FileNotFoundError:
+            click.echo(f"Task file for {slug} not found", err=True)
+            continue
+            
+        # Get relative path to tasks directory from repo root
+        tasks_dir_rel = task_dir().relative_to(repo_root())
+        
+        prompt = template.format(
+            integration_branch=INTEGRATION_BRANCH, 
+            task_file_path=str(task_file_abs),
+            tasks_dir=str(tasks_dir_rel)
+        )
         run_codex_exec(
-            wt_dir, prompt + f"\nTask: {slug}\n", full_auto=True, exec_mode=True
+            wt_dir, prompt, full_auto=True, exec_mode=True
         )
 
 

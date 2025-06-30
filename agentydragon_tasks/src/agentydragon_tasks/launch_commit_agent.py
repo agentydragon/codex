@@ -18,6 +18,7 @@ from agentydragon_tasks.common import (
     resolve_slug,
     sandbox_flags_for_worktree,
 )
+from agentydragon_tasks.tasklib import find_task_file
 
 
 @click.command()
@@ -33,8 +34,9 @@ def main(task_inputs):
             if not wt.is_dir():
                 continue
             slug = wt.name
-            md = tasks_dir() / f"{slug}.md"
-            if not md.exists():
+            try:
+                md = find_task_file(slug)
+            except FileNotFoundError:
                 continue
             text = md.read_text(encoding="utf-8")
             m_stat = re.search(r'status\s*=\s*"([^"]+)"', text)
@@ -97,9 +99,10 @@ def main(task_inputs):
     from importlib import resources
 
     base = resources.read_text(agentydragon_tasks.prompts, "commit.md")
-    task_file = tasks_dir() / f"{slug}.md"
-    if not task_file.exists():
-        click.echo(f"Error: file not found: {task_file}", err=True)
+    try:
+        task_file = find_task_file(slug)
+    except FileNotFoundError:
+        click.echo(f"Error: task file not found for {slug}", err=True)
         sys.exit(1)
 
     # prepare temp file for commit message

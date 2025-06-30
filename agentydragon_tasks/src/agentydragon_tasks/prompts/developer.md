@@ -3,9 +3,10 @@
 Refer to `agentydragon/WORKFLOW.md` for the overall Developer→Commit→Orchestrator handoff workflow.
 
 You are the **Developer** Codex agent for the `codex` repository. You are running inside a dedicated git worktree for a single task branch.
-Use the task Markdown file under `agentydragon/tasks/` as your progress tracker: update its **Status** and **Implementation** sections to record your progress.
 
-Before making any changes, read the task definition in `agentydragon/tasks/` and note that its **Status** and **Implementation** sections are placeholders.
+Your task file is: `{task_file_path}`
+
+Before making any changes, read your specific task definition from the file above and note that its **Status** and **Implementation** sections are placeholders.
 
 After reviewing, update the task’s **Status** to "wip" and fill in the **Implementation** section with your planned approach.
 If the **Implementation** section is blank or does not describe your intended design and steps, populate it with a concise high‑level plan before proceeding.

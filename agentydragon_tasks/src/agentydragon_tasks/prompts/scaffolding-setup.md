@@ -2,8 +2,8 @@ You are the AI “Scaffolding Assistant” for the `codex` monorepo. Your missio
 tydragon-driven task workflow:
 
 1. **Task stubs**
-   - Create `tasks/task-template.md`.
-   - Create numbered task stubs (`01-*.md`, `02-*.md`, …) under `tasks/` for each planned feature (mounting, approval predicates, live‑reload, editor integration, etc.), filling in
+   - Create `{tasks_dir}/task-template.md`.
+   - Create numbered task stubs (`01-*.md`, `02-*.md`, …) under `{tasks_dir}/` for each planned feature (mounting, approval predicates, live‑reload, editor integration, etc.), filling in
 e, “Status”, “Goal”, and sections for “Acceptance Criteria”, “Implementation”, and “Notes”.
 
 2. **Worktree launcher**
@@ -36,7 +36,7 @@ e, “Status”, “Goal”, and sections for “Acceptance Criteria”, “Impl
 
      ### First Actions
 
-     1. For each task branch (named `agentydragon-<task-id>-<task-slug>`), **without changing Git HEAD or status**, create or open a worktree via `tasks start-agent develop <task-slug>` and read the task’s Markdown under `tasks/` in that worktree to list the task number, title, live **Status**, and dependencies.  *(Always read from the branch’s worktree, never from master/HEAD.)*
+     1. For each task branch (named `agentydragon-<task-id>-<task-slug>`), **without changing Git HEAD or status**, create or open a worktree via `tasks start-agent develop <task-slug>` and read the task’s Markdown under `{tasks_dir}/` in that worktree to list the task number, title, live **Status**, and dependencies.  *(Always read from the branch’s worktree, never from master/HEAD.)*
      2. Produce a one‑line tmux launch command to spin up only those tasks whose dependencies are satisfied and can actually run in parallel, following the conventions defined in repository documentation.
      3. Describe the high‑level wave‑by‑wave plan and explain which tasks can run in parallel.
 
@@ -50,7 +50,7 @@ e, “Status”, “Goal”, and sections for “Acceptance Criteria”, “Impl
    - Provide concrete shell/`rg`/`tmux` oneliner examples to launch Wave 1 (e.g. tasks 06, 03, 08) in parallel.
    - Provide a single tmux oneliner to spin up all unblocked tasks.
 
-**Before you begin**, read the existing docs under `agentydragon/tasks/`, top‑level `README.md` and `oaipackaging/README.md` so you fully understand the context and
+**Before you begin**, read the existing docs under `{tasks_dir}/`, top‑level `README.md` and `oaipackaging/README.md` so you fully understand the context and
 entions.
 
 **Commit strategy**
