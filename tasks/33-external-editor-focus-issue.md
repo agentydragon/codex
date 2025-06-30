@@ -6,6 +6,8 @@ freeform_status = ""
 summary = "When launching the external editor from the TUI (e.g. nvim), keyboard input is still captured by the Rust TUI, causing keys to split between the editor and the TUI."
 dependencies = [6, 32] # Rationale: depends on Tasks 06 and 32 for external and embedded editor features
 last_updated = "2025-06-25T01:40:09.700000"
+
+++
 > *This task is specific to codex-rs.*
 
 # Task 33: Fix External Editor Focus Issue

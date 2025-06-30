@@ -6,6 +6,8 @@ freeform_status = ""
 dependencies = [] # Manager rationale: diff coloring fix; independent UI bugfix
 summary = "Patch diffs rendered with left indentation mode are not colored correctly, losing syntax highlighting."
 last_updated = "2025-06-25T00:00:00Z"
+
+++
 > *This task is specific to codex-rs.*
 
 # Task 39: Fix Coloring of Left-Indented Patch Diffs

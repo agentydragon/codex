@@ -5,6 +5,8 @@ status = "open"
 freeform_status = ""
 dependencies = [] # Manager rationale: inspect-env keystroke capture bugfix; independent task
 last_updated = "2025-06-26T06:30:00Z"
+
+++
 > *This task is specific to codex-rs.*
 
 # Task 55: Fix inspect-env keystroke capture issue

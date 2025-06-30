@@ -5,6 +5,8 @@ status = "open"
 freeform_status = ""
 dependencies = [] # Manager rationale: session persistence enhancement; no dependencies
 last_updated = "2025-06-25T23:00:00.000000"
+
+++
 > *This task is specific to codex-rs.*
 
 ## Summary
