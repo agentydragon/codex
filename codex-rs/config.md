@@ -279,6 +279,14 @@ include_only = ["PATH", "HOME"]
 | `set`                     | table&lt;string,string&gt; | `{}`    | Explicit key/value overrides or additions – always win over inherited values.                                                                   |
 | `include_only`            | array&lt;string&gt;        | `[]`    | If non-empty, a whitelist of patterns; only variables that match _one_ pattern survive the final step. (Generally used with `inherit = "all"`.) |
 
+You can specify any number of custom environment variables via the `set` table. For example:
+
+```toml
+[shell_environment_policy]
+inherit = "none"
+set = { MY_VAR = "value", OTHER_FLAG = "true" }
+```
+
 The patterns are **glob style**, not full regular expressions: `*` matches any
 number of characters, `?` matches exactly one, and character classes like
 `[A-Z]`/`[^0-9]` are supported. Matching is always **case-insensitive**. This
