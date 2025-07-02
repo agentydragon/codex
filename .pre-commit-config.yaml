@@ -3,10 +3,10 @@ repos:
     hooks:
       - id: check-tasks
         name: Run all task-directory validation checks
-        entry: python3 agentydragon/tools/check_tasks.py
+        entry: tasks check
         language: python
         additional_dependencies: [PyYAML, toml, pydantic]
-        files: ^agentydragon/tasks/.*
+        files: ^tasks/.*
       - id: cargo-build
         name: Check Rust workspace and linux-sandbox compile
         entry: bash -lc 'cd codex-rs && RUSTFLAGS="-D warnings" cargo build --workspace --locked --all-targets && cargo build -p codex-linux-sandbox --locked --all-targets'
