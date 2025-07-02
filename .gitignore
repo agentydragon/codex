@@ -71,9 +71,6 @@ tasks/.worktrees/
 .vercel/
 .netlify/
 
-# patches
-apply_patch/
-
 # coverage
 coverage/
 
