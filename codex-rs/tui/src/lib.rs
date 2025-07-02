@@ -231,8 +231,8 @@ fn run_ratatui_app(
         });
     }
 
-    // Watch config.toml for changes and prompt reload.
-    {
+    if !cli.no_config_reload {
+        // Watch config.toml for changes and prompt reload.
         let app_event_tx = app.event_sender();
         let config_path = config.codex_home.join("config.toml");
         std::thread::spawn(move || {

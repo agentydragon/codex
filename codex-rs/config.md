@@ -198,6 +198,14 @@ sandbox_permissions = [
 ## auto_allow
 
 User-defined predicate scripts that vote on each shell command before manual approval.
+
+## no_config_reload
+
+When running the TUI client (`codex-tui`), set this to `true` (or pass `--no-config-reload`) to disable the prompt that asks to reload `config.toml` when it changes.
+
+```toml
+no_config_reload = true
+```
 Each script is invoked with the full candidate command as its only argument and must
 write exactly one of `allow`, `deny`, or `no-opinion` to stdout.
 

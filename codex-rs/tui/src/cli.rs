@@ -52,6 +52,9 @@ pub struct Cli {
     /// Optional path where debug logs will be written (overrides default log file).
     #[arg(long = "debug-log", value_name = "FILE")]
     pub debug_log: Option<PathBuf>,
+    /// Disable config reload prompt on config.toml changes.
+    #[arg(long, default_value_t = false)]
+    pub no_config_reload: bool,
 
     #[clap(skip)]
     pub config_overrides: CliConfigOverrides,

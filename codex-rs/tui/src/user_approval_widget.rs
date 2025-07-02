@@ -143,6 +143,8 @@ pub(crate) struct UserApprovalWidget<'a> {
     select_style: Style,
     /// Style for unselected (plain) option text.
     plain_style: Style,
+    /// Foreground style for popup text and borders.
+    fg_style: Style,
     /// Background style for the dialog.
     bg_style: Style,
 }
@@ -159,6 +161,8 @@ impl UserApprovalWidget<'_> {
     ) -> Self {
         let select_style = parse_style(&colors.approval_select_style);
         let plain_style = parse_style(&colors.approval_plain_style);
+        // Styles for popup dialog
+        let fg_style = parse_style(&colors.popup_fg);
         let bg_style = parse_style(&colors.popup_bg);
         let input = Input::default();
         let confirmation_prompt = match &approval_request {
@@ -227,6 +231,7 @@ impl UserApprovalWidget<'_> {
             done: false,
             select_style,
             plain_style,
+            fg_style,
             bg_style,
         }
     }
@@ -371,7 +376,8 @@ impl WidgetRef for &UserApprovalWidget<'_> {
         let outer = Block::default()
             .title("Review")
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded);
+            .border_type(BorderType::Rounded)
+            .style(self.fg_style);
         let inner = outer.inner(area);
         let prompt_height = self.get_confirmation_prompt_height(inner.width);
         let chunks = Layout::default()
@@ -429,7 +435,10 @@ impl WidgetRef for &UserApprovalWidget<'_> {
             }
         }
         outer.render(area, buf);
-        self.confirmation_prompt.clone().render(prompt_chunk, buf);
+        // Render prompt with configured foreground style
+        self.confirmation_prompt.clone()
+            .style(self.fg_style)
+            .render(prompt_chunk, buf);
         Widget::render(List::new(lines), response_chunk, buf);
     }
 }
