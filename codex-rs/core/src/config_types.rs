@@ -159,8 +159,9 @@ impl Default for Tui {
     }
 }
 
-/// Named colors for individual TUI elements.  Override in `~/.codex/config.toml`
-/// under `[tui.colors]` using kebab-case keys.
+/// Style specifications for individual TUI elements. Override in `~/.codex/config.toml`
+/// under `[tui.styles]` using kebab-case keys; values are comma-separated modifiers
+/// (`bold`, `italic`, `underline`), `fg=<color>`, and `bg=<color>` (named or hex `#RRGGBB`).
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Colors {

@@ -301,30 +301,54 @@ inherit = "none"
 set = { PATH = "/usr/bin", MY_FLAG = "1" }
 ```
 
-## tui.colors
+## tui.styles
 
-Customize individual UI colors in the TUI under the `[tui.colors]` section. Keys are in kebab-case; values are any of the named colors listed below or `Reset` to clear styling.
+Customize individual TUI styles under the `[tui.styles]` section. Keys are in kebab-case; values are style specs: comma-separated modifiers (`bold`, `italic`, `underline`), `fg=<color>` and `bg=<color>` (named or hex `#RRGGBB`).
 
 ```toml
-[tui.colors]
-context-high = "Green"
-context-medium = "Yellow"
-context-low = "Red"
-scroll-thumb-active = "LightYellow"
-scroll-thumb-inactive = "Gray"
-scroll-track = "DarkGray"
-popup-fg = "LightBlue"
-popup-bg = "DarkGray"
-exec-success = "Green"
-exec-failure = "Red"
-exec-timing = "Gray"
-diff-add = "Green"
-diff-remove = "Red"
-diff-modify = "Yellow"
-diff-other = "Cyan"
+[tui.styles]
+context-high          = "fg=Green"
+context-medium        = "fg=Yellow"
+context-low           = "fg=Red"
+scroll-thumb-active   = "fg=LightYellow"
+scroll-thumb-inactive = "fg=Gray"
+scroll-track          = "fg=DarkGray"
+popup-fg              = "fg=LightBlue"
+popup-bg              = "bg=DarkGray"
+composer-error-border = "fg=Red"
+history-border        = "fg=Cyan"
+git-warning-border    = "fg=Red"
+status-text           = "fg=White"
+approval-select-style = "bold,fg=Blue"
+approval-plain-style  = "fg=Gray"
+exec-success          = "fg=Green"
+exec-failure          = "fg=Red"
+exec-timing           = "fg=Gray"
+diff-add              = "fg=Green"
+diff-remove           = "fg=Red"
+diff-modify           = "fg=Yellow"
+diff-other            = "fg=Cyan"
+tool-header           = "fg=Blue"
+tool-args             = "fg=Gray"
+history-approved      = "fg=Green"
+history-denied        = "fg=Red"
+history-pending       = "fg=Yellow"
+history-session       = "fg=Cyan"
+history-aborted       = "fg=Magenta"
+history-rejected      = "fg=Red"
+history-not-run       = "fg=DarkGray"
+history-error         = "fg=Red"
+history-success       = "fg=Green"
+history-failed        = "fg=Red"
+history-unknown       = "fg=DarkGray"
+history-running       = "fg=Blue"
+history-na            = "fg=DarkGray"
+history-footer-bg     = "bg=DarkGray"
+dim-text              = "fg=Gray"
+reset                 = "fg=Reset"
 ```
 
-All fields are optional; omitted entries default to the built-in palette above.
+Supported modifiers: `bold`, `italic`, `underline`.
 
 Supported color names (case-insensitive):
 
