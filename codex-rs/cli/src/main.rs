@@ -6,6 +6,7 @@ use codex_cli::proto;
 use codex_common::CliConfigOverrides;
 use codex_core::config::find_codex_home;
 use codex_exec::Cli as ExecCli;
+use codex_cli::inspect_env::{run_inspect_env, InspectEnvArgs};
 use codex_tui::Cli as TuiCli;
 use serde::de::Error as SerdeError;
 use std::env;
@@ -73,6 +74,9 @@ enum Subcommand {
         /// UUID of the session to resume
         session_id: Uuid,
     },
+    /// Inspect the sandbox/container environment
+    #[command(name = "inspect-env")]
+    InspectEnv(InspectEnvArgs),
     /// Inspect or modify the CLI configuration file.
     #[command(subcommand)]
     Config(ConfigCmd),
@@ -136,6 +140,12 @@ async fn cli_main(codex_linux_sandbox_exe: Option<PathBuf>) -> anyhow::Result<()
             tui_cli.session = Some(session_id);
             prepend_config_flags(&mut tui_cli.config_overrides, cli.config_overrides);
             codex_tui::run_main(tui_cli, codex_linux_sandbox_exe)?;
+        }
+        // Inspect sandbox/container environment
+        Some(Subcommand::InspectEnv(mut args)) => {
+            prepend_config_flags(&mut args.config_overrides, cli.config_overrides);
+            run_inspect_env(args, codex_linux_sandbox_exe).await?;
+            return Ok(());
         }
         Some(Subcommand::Config(cmd)) => {
             // Handle `codex config` subcommands: edit or set.

@@ -259,6 +259,10 @@ impl SandboxPolicy {
         self.permissions
             .push(SandboxPermission::DiskWriteFolder { folder });
     }
+    /// List all permissions in this policy.
+    pub fn permissions(&self) -> &[SandboxPermission] {
+        &self.permissions
+    }
 
     /// Revoke any disk-write permission for the specified folder.
     pub fn revoke_disk_write_folder<P: AsRef<std::path::Path>>(&mut self, folder: P) {
