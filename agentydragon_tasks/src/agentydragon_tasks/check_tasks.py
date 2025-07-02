@@ -90,32 +90,48 @@ def check_cycles():
     return failures
 
 
-def main():
+def main(paths=None):
+    """Run task-directory validation checks.
+
+    If paths are provided, only frontmatter checks are run on given task files.
+    Otherwise, full checks (file types, frontmatter, dependency cycles) are performed.
+    """
     err = False
 
-    # File type check
-    ft_fail = check_file_types()
-    if ft_fail:
-        print("Non-md files under tasks/:", file=sys.stderr)
-        for f in ft_fail:
-            print(f"  {f}", file=sys.stderr)
-        err = True
+    if paths is None:
+        # File type check
+        ft_fail = check_file_types()
+        if ft_fail:
+            print("Non-md files under tasks/:", file=sys.stderr)
+            for f in ft_fail:
+                print(f"  {f}", file=sys.stderr)
+            err = True
 
     # Frontmatter check
-    fm_fail = check_frontmatter()
+    if paths:
+        fm_fail: list[tuple[Path, str]] = []
+        for p in paths:
+            p = Path(p)
+            try:
+                load_task(p)
+            except Exception as e:
+                fm_fail.append((p, str(e)))
+    else:
+        fm_fail = check_frontmatter()
     if fm_fail:
         print("\nFrontmatter errors:", file=sys.stderr)
         for md, msg in fm_fail:
             print(f"  {md}: {msg}", file=sys.stderr)
         err = True
 
-    # Dependency cycles
-    cyc_fail = check_cycles()
-    if cyc_fail:
-        print("\nCircular dependency errors:", file=sys.stderr)
-        for cycle in cyc_fail:
-            print("  " + " -> ".join(cycle), file=sys.stderr)
-        err = True
+    if paths is None:
+        # Dependency cycles
+        cyc_fail = check_cycles()
+        if cyc_fail:
+            print("\nCircular dependency errors:", file=sys.stderr)
+            for cycle in cyc_fail:
+                print("  " + " -> ".join(cycle), file=sys.stderr)
+            err = True
 
     if err:
         sys.exit(1)

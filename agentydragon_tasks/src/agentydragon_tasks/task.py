@@ -557,9 +557,11 @@ def launch(task_id):
 
 
 @cli.command("check")
-def check():
+@click.argument("paths", nargs=-1)
+def check(paths):
     """Run task-directory validation checks"""
-    _check_tasks()
+    file_paths = [Path(p) for p in paths] if paths else None
+    _check_tasks(file_paths)
 
 
 @cli.command("start-agent")
