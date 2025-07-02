@@ -5,8 +5,8 @@ status = "open"
 freeform_status = ""
 dependencies = [26]
 last_updated = "2025-06-26T06:30:00Z"
++++
 
-++
 > *This task is specific to codex-rs.*
 
 # Task 50: Preserve draft focus during approval dialog
