@@ -92,9 +92,11 @@ pub async fn run_inspect_env(
         "None"
     };
     println!("Container technology: {}\n", tech);
-    // Environment variables
+    // Environment variables (sorted)
     println!("Environment Variables:");
-    for (k, v) in std::env::vars() {
+    let mut envs: Vec<_> = std::env::vars().collect();
+    envs.sort_by(|a, b| a.0.cmp(&b.0));
+    for (k, v) in envs {
         println!("  {}={}", k, v);
     }
     println!();
