@@ -5,8 +5,8 @@ status = "open"
 freeform_status = ""
 dependencies = [9, 23] # Rationale: depends on Tasks 09 and 23 for file-level approvals and interactive command affordance
 last_updated = "2025-06-25T01:40:09.600000"
++++
 
-++
 > *This task is specific to codex-rs.*
 
 ## Summary

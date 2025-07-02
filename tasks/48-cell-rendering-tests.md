@@ -5,8 +5,8 @@ status = "open"
 freeform_status = ""
 dependencies = [] # Manager rationale: add cell rendering tests independently; no prerequisite tasks
 last_updated = "2025-06-26T06:30:00Z"
++++
 
-++
 > *This task is specific to codex-rs.*
 
 # Task 48: Add tests for correct cell rendering with example sequences

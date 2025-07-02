@@ -5,8 +5,8 @@ status = "open"
 freeform_status = ""
 dependencies = [2] # Rationale: depends on Task 02 for auto-approval logic
 last_updated = "2025-06-25T01:40:09.600000"
++++
 
-++
 > *This task is specific to codex-rs.*
 
 ## Summary
