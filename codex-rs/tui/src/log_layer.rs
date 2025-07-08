@@ -93,3 +93,29 @@ where
         let _ = self.tx.send(sanitized);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::sync::mpsc;
+    use tracing::Level;
+    use tracing_subscriber::Registry;
+    use tracing_subscriber::filter::LevelFilter;
+    use tracing_subscriber::fmt;
+    use tracing_subscriber::prelude::*;
+
+    #[test]
+    fn tui_layer_forwards_unrecognized_config_warnings() {
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let tui_layer = TuiLogLayer::new(tx, 120);
+        let subscriber = Registry::default()
+            .with(fmt::layer().with_filter(LevelFilter::WARN))
+            .with(tui_layer);
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::warn!(key = "foo", "unrecognized config key");
+        });
+        let msg = rx.try_recv().expect("should receive warning message");
+        assert!(msg.contains("unrecognized config key"));
+        assert!(msg.contains("foo"));
+    }
+}

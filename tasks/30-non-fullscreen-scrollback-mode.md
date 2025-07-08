@@ -4,7 +4,7 @@ title = "Non-Fullscreen Scrollback Mode with Native Terminal Scroll"
 status = "done"
 freeform_status = ""
 dependencies = [] # Manager rationale: independent UI enhancement; no prerequisite tasks
-last_updated = "2025-06-25T01:40:09.600000"
+last_updated = "2025-07-01T00:00:00.000000"
 +++
 
 ## Summary
@@ -197,3 +197,9 @@ Provide an optional non-fullscreen mode for the chat UI where:
 
 - This mode trades advanced in-TUI scrolling features for simplicity and compatibility with users’ accustomed terminal scrollback.
 - It may not support complex viewport resizing; documentation should note that.
+
+## Current Implementation Limitations
+
+- The existing `non_fullscreen_mode` implementation still switches to a cleared full-screen buffer on startup, wiping out the previous terminal content.
+- Conversation history remains in a fixed-height TUI widget (with its own internal scrollbar); excess messages beyond the widget’s visible area do not enter the terminal emulator’s scrollback.
+- Screen clearing and widget-based scrolling violate the spec’s requirement to append output inline and rely solely on the terminal’s native scrollback.

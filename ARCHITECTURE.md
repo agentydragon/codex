@@ -24,14 +24,14 @@ This protocol is transport-agnostic and can work over:
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   TUI Mode  │     │  Exec Mode  │     │  MCP Mode   │
-│ (Interactive)     │  (Headless)  │     │  (Server)   │
+│ (Interactive)     │  (Headless) │     │  (Server)   │
 └──────┬──────┘     └──────┬──────┘     └──────┬──────┘
-       │                   │                    │
-       └───────────────────┴────────────────────┘
+       │                   │                   │
+       └───────────────────┴───────────────────┘
                            │
                     ┌──────▼──────┐
-                    │  Core Logic  │
-                    │  (Protocol)  │
+                    │  Core Logic │
+                    │  (Protocol) │
                     └──────┬──────┘
                            │
         ┌──────────────────┼──────────────────┐

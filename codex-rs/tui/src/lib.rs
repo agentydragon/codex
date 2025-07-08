@@ -151,6 +151,11 @@ pub fn run_main(cli: Cli, codex_linux_sandbox_exe: Option<PathBuf>) -> std::io::
         .with(tui_layer)
         .try_init();
 
+    // Republish warnings for unrecognized config keys so they appear in the UI
+    for key in &config.unrecognized_keys {
+        tracing::warn!(?key, "unrecognized config key");
+    }
+
     let show_login_screen = should_show_login_screen(&config);
 
     // Determine whether we need to display the "not a git repo" warning

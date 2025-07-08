@@ -1,0 +1,24 @@
+ [package]
+ name = "codex-shell"
+ version = { workspace = true }
+ edition = "2024"
+
+[[bin]]
+name = "codex-shell"
+path = "src/main.rs"
+
+[lib]
+name = "codex_shell"
+path = "src/lib.rs"
+
+ [lints]
+ workspace = true
+
+ [dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+codex-common = { path = "../common", features = ["cli"] }
+codex-core = { path = "../core" }
+codex-linux-sandbox = { path = "../linux-sandbox" }
+uuid = { version = "1", features = ["v4"] }
+tokio = { version = "1", features = ["macros", "signal", "rt-multi-thread"] }
