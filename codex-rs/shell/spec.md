@@ -9,7 +9,7 @@ Provide a standalone `codex-shell` binary that runs in the normal terminal buffe
 The shell mode must behave like a regular shell session:
 
 - **Append-only history**: every user input or model response is printed via `println!` so it lands in the terminal’s scrollback.  No alternate-screen or full-screen clears.
-- **Bottom-only redraw**: ratatui (if used) is restricted to re-rendering just the prompt line(s) at the bottom; history above is never cleared or redrawn.
+- **Bottom-only redraw**: ratatui (if used) may only re-render the prompt line(s) immediately after existing content (not by clearing or repositioning anywhere else); prior history is never cleared or redrawn.
 - **Inline patch/markdown**: diffs and markdown must render inline with syntax highlighting.
 - **Codex-rs hooks**: pre- and post-command hooks inject events into a unified event layer.
 - **Approval panel**: approval requests appear inline in a panel above the compose prompt, without moving the prompt; approval/denial uses Ctrl‑key shortcuts (e.g. Ctrl‑Y/Ctrl‑N) to reduce accidental triggers.
