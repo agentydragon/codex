@@ -49,7 +49,9 @@ pub struct Cli {
     #[arg(long = "skip-git-repo-check", default_value_t = false)]
     pub skip_git_repo_check: bool,
 
-    /// Optional path where debug logs will be written (overrides default log file).
+    /// Optional path for debug logs (overrides default per-session or global log file).
+    /// By default, logs go to ~/.codex/sessions/<session_id>/tui.log when resuming a session,
+    /// or to the global log_dir/codex-tui.log if no session.
     #[arg(long = "debug-log", value_name = "FILE")]
     pub debug_log: Option<PathBuf>,
 

@@ -16,6 +16,7 @@ use tracing::debug;
 use tracing::trace;
 
 use crate::ModelProviderInfo;
+use crate::api_logger::ApiLogger;
 use crate::api_logger::TS_FORMAT;
 use crate::client_common::Prompt;
 use crate::client_common::ResponseEvent;
@@ -155,7 +156,8 @@ pub(crate) async fn stream_chat_completions(
     );
     // record request with unique ID
     let req_id = Uuid::new_v4().to_string();
-    if let Some(logger) = api_logger {
+    let api_logger = api_logger.cloned();
+    if let Some(logger) = &api_logger {
         let entry = serde_json::json!({
             "ts": OffsetDateTime::now_utc().format(TS_FORMAT).unwrap_or_default(),
             "type": "request",
@@ -185,14 +187,19 @@ pub(crate) async fn stream_chat_completions(
             Ok(resp) if resp.status().is_success() => {
                 let (tx_event, rx_event) = mpsc::channel::<Result<ResponseEvent>>(16);
                 let stream = resp.bytes_stream().map_err(CodexErr::Reqwest);
-                tokio::spawn(process_chat_sse(stream, tx_event));
+                tokio::spawn(process_chat_sse(
+                    stream,
+                    tx_event,
+                    api_logger.clone(),
+                    req_id.clone(),
+                ));
                 return Ok(ResponseStream { rx_event });
             }
             Ok(res) => {
                 let status = res.status();
                 if !(status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error()) {
                     let body = (res.text().await).unwrap_or_default();
-                    if let Some(logger) = api_logger {
+                    if let Some(logger) = &api_logger {
                         let entry = serde_json::json!({
                             "ts": OffsetDateTime::now_utc().format(TS_FORMAT).unwrap_or_default(),
                             "type": "error",
@@ -221,7 +228,7 @@ pub(crate) async fn stream_chat_completions(
                 tokio::time::sleep(delay).await;
             }
             Err(e) => {
-                if let Some(logger) = api_logger {
+                if let Some(logger) = &api_logger {
                     let entry = serde_json::json!({
                         "ts": OffsetDateTime::now_utc().format(TS_FORMAT).unwrap_or_default(),
                         "type": "error",
@@ -243,8 +250,12 @@ pub(crate) async fn stream_chat_completions(
 /// Lightweight SSE processor for the Chat Completions streaming format. The
 /// output is mapped onto Codex's internal [`ResponseEvent`] so that the rest
 /// of the pipeline can stay agnostic of the underlying wire format.
-async fn process_chat_sse<S>(stream: S, tx_event: mpsc::Sender<Result<ResponseEvent>>)
-where
+async fn process_chat_sse<S>(
+    stream: S,
+    tx_event: mpsc::Sender<Result<ResponseEvent>>,
+    api_logger: Option<ApiLogger>,
+    req_id: String,
+) where
     S: Stream<Item = Result<Bytes>> + Unpin,
 {
     let mut stream = stream.eventsource();
@@ -290,6 +301,16 @@ where
             }
         };
 
+        // log raw SSE chunk before processing
+        if let Some(logger) = &api_logger {
+            let entry = serde_json::json!({
+                "ts": OffsetDateTime::now_utc().format(TS_FORMAT).unwrap_or_default(),
+                "type": "response",
+                "req_id": req_id,
+                "data": sse.data,
+            });
+            let _ = logger.log(&entry).await;
+        }
         // OpenAI Chat streaming sends a literal string "[DONE]" when finished.
         if sse.data.trim() == "[DONE]" {
             let _ = tx_event

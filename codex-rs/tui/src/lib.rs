@@ -107,9 +107,13 @@ pub fn run_main(cli: Cli, codex_linux_sandbox_exe: Option<PathBuf>) -> std::io::
         return Ok(());
     }
 
-    // Determine log file path: use --debug-log if set, otherwise default under config log_dir
+    // Determine log file path: use --debug-log if set, otherwise per-session under ~/.codex/sessions/<session_id>/tui.log
     let log_path = if let Some(path) = &cli.debug_log {
         path.clone()
+    } else if let Some(sess_id) = cli.session {
+        let sess_dir = config.codex_home.join("sessions").join(sess_id.to_string());
+        std::fs::create_dir_all(&sess_dir)?;
+        sess_dir.join("tui.log")
     } else {
         let log_dir = codex_core::config::log_dir(&config)?;
         std::fs::create_dir_all(&log_dir)?;
@@ -218,6 +222,8 @@ fn run_ratatui_app(
         session,
         ..
     } = cli;
+    // Ensure each run gets a session_id (resume or new)
+    let sess_id = session.unwrap_or_else(Uuid::new_v4);
     let mut app = App::new(
         config.clone(),
         prompt,
@@ -225,13 +231,12 @@ fn run_ratatui_app(
         show_git_warning,
         images,
     );
-    // If resuming, override the generated session ID so UI hint logic and history use it
-    if let Some(id) = session {
-        app.set_session_id(id);
-        // Attempt to replay past conversation transcript
-        if let Some(items) = load_rollout_for_session(&config, id) {
-            app.replay_items(items);
-        }
+    app.set_session_id(sess_id);
+    // If resuming existing rollout, replay it
+    if session.is_some()
+        && let Some(items) = load_rollout_for_session(&config, sess_id)
+    {
+        app.replay_items(items);
     }
 
     // Bridge log receiver into the AppEvent channel so latest log lines update the UI.
@@ -257,13 +262,15 @@ fn run_ratatui_app(
 
 /// Load and parse a previous session's rollout JSONL file.
 fn load_rollout_for_session(config: &Config, session_id: Uuid) -> Option<Vec<ResponseItem>> {
-    let dir = config.codex_home.join("sessions");
-    let target = session_id.to_string();
+    // Load rollout from per-session directory: ~/.codex/sessions/<session_id>
+    let dir = config
+        .codex_home
+        .join("sessions")
+        .join(session_id.to_string());
     for entry in fs::read_dir(&dir).ok()? {
         let path = entry.ok()?.path();
         if let Some(fname) = path.file_name().and_then(|s| s.to_str())
             && fname.starts_with("rollout-")
-            && fname.contains(&target)
             && fname.ends_with(".jsonl")
         {
             let file = File::open(path).ok()?;

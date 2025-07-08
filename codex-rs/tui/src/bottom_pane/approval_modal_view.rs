@@ -6,11 +6,13 @@ use ratatui::widgets::WidgetRef;
 use crate::app_event_sender::AppEventSender;
 use crate::user_approval_widget::ApprovalRequest;
 use crate::user_approval_widget::UserApprovalWidget;
+use tracing::debug;
 
 use super::BottomPane;
 use super::BottomPaneView;
 
 /// Modal overlay asking the user to approve/deny a sequence of requests.
+#[derive(Debug)]
 pub(crate) struct ApprovalModalView<'a> {
     current: UserApprovalWidget<'a>,
     queue: Vec<ApprovalRequest>,
@@ -25,6 +27,7 @@ impl ApprovalModalView<'_> {
         app_event_tx: AppEventSender,
         colors: codex_core::config_types::Colors,
     ) -> Self {
+        debug!("UI: enqueue approval request: {:?}", request);
         Self {
             current: UserApprovalWidget::new(request, app_event_tx.clone(), colors.clone()),
             queue: Vec::new(),
@@ -40,10 +43,11 @@ impl ApprovalModalView<'_> {
     /// Advance to next request if the current one is finished.
     fn maybe_advance(&mut self) {
         if self.current.is_complete()
-            && let Some(req) = self.queue.pop()
+            && let Some(next) = self.queue.pop()
         {
+            debug!("UI: advancing to next approval request: {:?}", next);
             self.current =
-                UserApprovalWidget::new(req, self.app_event_tx.clone(), self.colors.clone());
+                UserApprovalWidget::new(next, self.app_event_tx.clone(), self.colors.clone());
         }
     }
 }

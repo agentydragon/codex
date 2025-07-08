@@ -31,6 +31,7 @@ use ratatui::widgets::Widget;
 use ratatui::widgets::WidgetRef;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::mpsc::unbounded_channel;
+use tracing::debug;
 
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
@@ -355,6 +356,10 @@ impl ChatWidget<'_> {
                 // prompt before they have seen *what* is being requested.
                 // ------------------------------------------------------------------
 
+                debug!(
+                    "UI: opening patch approval dialog id={} reason={:?}",
+                    id, reason
+                );
                 self.conversation_history.add_patch_event(
                     &self.config,
                     PatchEventType::ApprovalRequest,

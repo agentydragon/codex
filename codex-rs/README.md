@@ -118,6 +118,15 @@ patch-header          = "Cyan"
 assistant-label       = "Magenta"
 hunk-marker           = "Magenta"
 
+### Logging
+
+By default the TUI emits its runtime/debug logs to a per‐session file under `~/.codex/sessions/<session_id>/tui.log`
+and records API requests/responses under `~/.codex/sessions/<session_id>/api-<timestamp>-<session_id>.jsonl`.
+Rollout (linear conversation transcript) is appended to
+`~/.codex/sessions/rollout-<timestamp>-<session_id>.jsonl`.
+
+Use the `--debug-log <FILE>` flag to override and write the TUI log to a custom path.
+
 # Exec‑command annotations
 exec-success          = "Green"
 exec-failure          = "Red"

@@ -32,8 +32,10 @@ use crate::app_event_sender::AppEventSender;
 use crate::exec_command::relativize_to_home;
 use crate::exec_command::strip_bash_lc_and_escape;
 use crate::parse_style;
+use tracing::debug;
 
 /// Request coming from the agent that needs user approval.
+#[derive(Debug)]
 pub(crate) enum ApprovalRequest {
     Exec {
         id: String,
@@ -122,6 +124,7 @@ enum Mode {
 }
 
 /// A modal prompting the user to approve or deny the pending request.
+#[derive(Debug)]
 pub(crate) struct UserApprovalWidget<'a> {
     approval_request: ApprovalRequest,
     app_event_tx: AppEventSender,
@@ -269,6 +272,10 @@ impl UserApprovalWidget<'_> {
     /// captures input while visible, we don’t need to report whether the event
     /// was consumed—callers can assume it always is.
     pub(crate) fn handle_key_event(&mut self, key: KeyEvent) {
+        debug!(
+            "UI: approval dialog key_event {:?} in mode {:?}",
+            key, self.mode
+        );
         match self.mode {
             Mode::Select => self.handle_select_key(key),
             Mode::Input => self.handle_input_key(key),
@@ -340,6 +347,10 @@ impl UserApprovalWidget<'_> {
     }
 
     fn send_decision_with_feedback(&mut self, decision: ReviewDecision, _feedback: String) {
+        debug!(
+            "UI: sending decision {:?} for {:?}",
+            decision, self.approval_request
+        );
         let op = match &self.approval_request {
             ApprovalRequest::Exec { id, .. } => Op::ExecApproval {
                 id: id.clone(),

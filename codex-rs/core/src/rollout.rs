@@ -153,9 +153,10 @@ struct LogFileInfo {
 }
 
 fn create_log_file(config: &Config, session_id: Uuid) -> std::io::Result<LogFileInfo> {
-    // Resolve ~/.codex/sessions and create it if missing.
+    // Resolve ~/.codex/sessions/<session_id> and create it if missing.
     let mut dir = config.codex_home.clone();
     dir.push(SESSIONS_SUBDIR);
+    dir.push(session_id.to_string());
     fs::create_dir_all(&dir)?;
 
     let timestamp = OffsetDateTime::now_local()
@@ -169,7 +170,7 @@ fn create_log_file(config: &Config, session_id: Uuid) -> std::io::Result<LogFile
         .format(format)
         .map_err(|e| IoError::other(format!("failed to format timestamp: {e}")))?;
 
-    let filename = format!("rollout-{date_str}-{session_id}.jsonl");
+    let filename = format!("rollout-{date_str}.jsonl");
 
     let path = dir.join(filename);
     let file = std::fs::OpenOptions::new()

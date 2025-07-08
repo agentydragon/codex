@@ -29,6 +29,7 @@ impl ApiLogger {
     pub async fn new(config: &Config, session_id: Uuid) -> std::io::Result<Self> {
         let mut dir = config.codex_home.clone();
         dir.push(SESSIONS_SUBDIR);
+        dir.push(session_id.to_string());
         fs::create_dir_all(&dir)?;
         let now = OffsetDateTime::now_utc();
         let fmt: &[FormatItem] =
@@ -36,7 +37,7 @@ impl ApiLogger {
         let date = now
             .format(fmt)
             .map_err(|e| IoError::other(format!("failed to format date: {e}")))?;
-        let name = format!("api-{}-{}.jsonl", date, session_id);
+        let name = format!("api-{}.jsonl", date);
         let path = dir.join(name);
         let file = File::options().append(true).create(true).open(&path)?;
         let (tx, mut rx) = mpsc::channel::<String>(256);
