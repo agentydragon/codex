@@ -98,7 +98,6 @@ where
 mod tests {
     use super::*;
     use tokio::sync::mpsc;
-    use tracing::Level;
     use tracing_subscriber::Registry;
     use tracing_subscriber::filter::LevelFilter;
     use tracing_subscriber::fmt;
@@ -114,7 +113,10 @@ mod tests {
         tracing::subscriber::with_default(subscriber, || {
             tracing::warn!(key = "foo", "unrecognized config key");
         });
-        let msg = rx.try_recv().expect("should receive warning message");
+        let msg = match rx.try_recv() {
+            Ok(msg) => msg,
+            Err(_) => panic!("should receive warning message"),
+        };
         assert!(msg.contains("unrecognized config key"));
         assert!(msg.contains("foo"));
     }

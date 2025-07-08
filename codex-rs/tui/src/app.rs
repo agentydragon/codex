@@ -322,10 +322,8 @@ impl<'a> App<'a> {
             // Expire pending Ctrl+D confirmation and clear any prompt overlay.
             let now = Instant::now();
             self.confirm_ctrl_d.expire(now);
-            if self.config.tui.require_double_ctrl_d
-                && !self.confirm_ctrl_d.is_confirming()
-                && let AppState::Chat { widget } = &mut self.app_state
-            {
+            if self.config.tui.require_double_ctrl_d && !self.confirm_ctrl_d.is_confirming()
+                && let AppState::Chat { widget } = &mut self.app_state {
                 widget.clear_exit_confirmation_prompt();
             }
             match event {

@@ -261,10 +261,7 @@ fn load_rollout_for_session(config: &Config, session_id: Uuid) -> Option<Vec<Res
     for entry in fs::read_dir(&dir).ok()? {
         let path = entry.ok()?.path();
         if let Some(fname) = path.file_name().and_then(|s| s.to_str())
-            && fname.starts_with("rollout-")
-            && fname.contains(&target)
-            && fname.ends_with(".jsonl")
-        {
+            && fname.starts_with("rollout-") && fname.contains(&target) && fname.ends_with(".jsonl") {
             let file = File::open(path).ok()?;
             let reader = BufReader::new(file);
             let mut items = Vec::new();

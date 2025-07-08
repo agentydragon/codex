@@ -50,15 +50,25 @@ pub async fn run_main(cli: Cli, _sandbox_exe: Option<std::path::PathBuf>) -> Res
     // Initialize Codex client and display session start
     let (codex, session_event, ctrl_c) =
         codex_core::codex_wrapper::init_codex(config.clone()).await?;
-    println!("{:?}", session_event);
+    // unify model and hook events into a single channel
+    let (evt_tx, mut evt_rx) = tokio::sync::mpsc::unbounded_channel();
+    // send initial session event
+    let _ = evt_tx.send(session_event);
+    // spawn model event producer
+    tokio::spawn(async move {
+        while let Ok(e) = codex.next_event().await {
+            let _ = evt_tx.send(e);
+        }
+    });
+    // TODO: spawn hook event producers and forward into evt_tx
 
-    // Event loop: print each incoming event
+    // Event loop: print each incoming unified event
     loop {
         tokio::select! {
             _ = ctrl_c.notified() => break,
-            evt = codex.next_event() => match evt {
-                Ok(e) => println!("{:?}", e),
-                Err(_) => break,
+            maybe = evt_rx.recv() => match maybe {
+                Some(e) => println!("{:?}", e),
+                None => break,
             }
         }
     }
