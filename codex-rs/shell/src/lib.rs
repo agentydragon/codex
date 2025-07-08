@@ -35,20 +35,36 @@ enum ShellEvent {
 
 /// Print a single event inline (append-only).
 fn render_event(evt: &ShellEvent) {
-    // TODO: format events with ANSI styling
+    // inline history entries with aligned labels
+    const LABEL_WIDTH: usize = 6; // width of longest label, e.g. "codex:"
     match evt {
+        ShellEvent::Input(text) => {
+            let label = "user:";
+            let spaces = " ".repeat(LABEL_WIDTH.saturating_sub(label.len()));
+            println!("\x1b[32m{label}{spaces}{text}\x1b[0m");
+        }
         ShellEvent::Codex(ev) => {
-            println!(
-                "\x1b[34m[codex:{id}] {msg:?}\x1b[0m",
-                id = ev.id,
-                msg = ev.msg
-            );
+            use codex_core::protocol::EventMsg;
+            let label = "codex:";
+            let spaces = " ".repeat(LABEL_WIDTH - label.len());
+            match &ev.msg {
+                EventMsg::SessionConfigured(_) => {}
+                EventMsg::AgentMessage(m) => println!(
+                    "\x1b[34m{label}{spaces}{text}\x1b[0m",
+                    text = m.message,
+                    label = label,
+                    spaces = spaces
+                ),
+                EventMsg::AgentReasoning(r) if !r.text.is_empty() => {
+                    println!("\x1b[34m{}{}{}\x1b[0m", label, spaces, r.text)
+                }
+                other => println!("\x1b[34m{label}{spaces}{other:?}\x1b[0m"),
+            }
         }
         ShellEvent::Hook(resp) => {
-            println!("\x1b[34m[hook] {resp:?}\x1b[0m");
-        }
-        ShellEvent::Input(line) => {
-            println!("\x1b[32m> {line}\x1b[0m");
+            let label = "hook::";
+            let spaces = " ".repeat(LABEL_WIDTH.saturating_sub(label.len()));
+            println!("\x1b[34m{label}{spaces}{resp:?}\x1b[0m");
         }
     }
 }
