@@ -90,6 +90,9 @@ pub async fn run_codex_tool_session(
                     EventMsg::AgentMessage(AgentMessageEvent { message }) => {
                         last_agent_message = Some(message.clone());
                     }
+                    EventMsg::HookResponse(_) => {
+                        // ignore hook responses
+                    }
                     EventMsg::ExecApprovalRequest(_) => {
                         let result = CallToolResult {
                             content: vec![CallToolResultContent::TextContent(TextContent {

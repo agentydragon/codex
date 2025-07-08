@@ -1,5 +1,6 @@
 use crate::config_profile::ConfigProfile;
 use crate::config_types::History;
+use crate::config_types::HookConfig;
 use crate::config_types::McpServerConfig;
 use crate::config_types::ReasoningEffort;
 use crate::config_types::ReasoningSummary;
@@ -49,6 +50,8 @@ pub struct Config {
     pub approval_policy: AskForApproval,
     /// Auto-approval predicate scripts that cast votes on each shell command.
     pub auto_allow: Vec<AutoAllowPredicate>,
+    /// External hook processes to spawn on each event.
+    pub hooks: Vec<HookConfig>,
 
     pub sandbox_policy: SandboxPolicy,
 
@@ -273,6 +276,9 @@ pub struct ConfigToml {
     /// Auto-approval predicate scripts that cast votes on each shell command.
     #[serde(default)]
     pub auto_allow: Vec<AutoAllowPredicate>,
+    /// External hook processes to spawn on each event.
+    #[serde(default)]
+    pub hooks: Vec<HookConfig>,
 
     #[serde(default)]
     pub shell_environment_policy: ShellEnvironmentPolicyToml,
@@ -513,6 +519,7 @@ impl Config {
                 .or(cfg.approval_policy)
                 .unwrap_or_else(AskForApproval::default),
             auto_allow: config_profile.auto_allow.unwrap_or(cfg.auto_allow),
+            hooks: cfg.hooks.clone(),
             sandbox_policy,
             shell_environment_policy,
             disable_response_storage: config_profile
@@ -888,6 +895,7 @@ disable_response_storage = true
                 model_provider: fixture.openai_provider.clone(),
                 approval_policy: AskForApproval::Never,
                 auto_allow: Vec::new(),
+                hooks: Vec::new(),
                 sandbox_policy: SandboxPolicy::new_read_only_policy(),
                 shell_environment_policy: ShellEnvironmentPolicy::default(),
                 disable_response_storage: false,
@@ -934,6 +942,7 @@ disable_response_storage = true
             model_provider: fixture.openai_chat_completions_provider.clone(),
             approval_policy: AskForApproval::UnlessAllowListed,
             auto_allow: Vec::new(),
+            hooks: Vec::new(),
             sandbox_policy: SandboxPolicy::new_read_only_policy(),
             shell_environment_policy: ShellEnvironmentPolicy::default(),
             disable_response_storage: false,
@@ -995,6 +1004,7 @@ disable_response_storage = true
             model_provider: fixture.openai_provider.clone(),
             approval_policy: AskForApproval::OnFailure,
             auto_allow: Vec::new(),
+            hooks: Vec::new(),
             sandbox_policy: SandboxPolicy::new_read_only_policy(),
             shell_environment_policy: ShellEnvironmentPolicy::default(),
             disable_response_storage: true,

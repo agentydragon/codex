@@ -10,6 +10,13 @@ use wildmatch::WildMatchPattern;
 use serde::Deserialize;
 use serde::Serialize;
 
+/// Configuration for an external hook process.
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+pub struct HookConfig {
+    /// Command and arguments for the hook process.
+    pub command: Vec<String>,
+}
+
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct McpServerConfig {
     pub command: String,

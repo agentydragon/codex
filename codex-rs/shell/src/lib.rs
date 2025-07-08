@@ -6,6 +6,19 @@ use tokio::io::AsyncBufReadExt;
 use clap::Parser;
 use codex_core::config::Config;
 use codex_core::config::ConfigOverrides;
+use codex_core::hooks::HookManager;
+use codex_core::hooks::HookResponse;
+use codex_core::protocol::Event;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+/// Unified event type for model and hook responses.
+#[allow(dead_code)]
+#[derive(Debug)]
+enum ShellEvent {
+    Codex(Event),
+    Hook(HookResponse),
+}
 
 /// CLI options for codex-shell
 #[derive(Debug, Parser)]
@@ -52,8 +65,35 @@ pub async fn run_main(cli: Cli, _sandbox_exe: Option<std::path::PathBuf>) -> Res
     // Initialize Codex client and display session start
     let (codex, session_event, ctrl_c) =
         codex_core::codex_wrapper::init_codex(config.clone()).await?;
-    // print initial session event
-    println!("{session_event:?}");
+    // unify model and hook events into a single channel
+    let (evt_tx, mut evt_rx) = tokio::sync::mpsc::unbounded_channel::<ShellEvent>();
+    // spawn hook processes and read their responses
+    let hook_mgr = Arc::new(Mutex::new(HookManager::new(&config.hooks, session_id)));
+    {
+        let hook_tx = evt_tx.clone();
+        let hook_mgr = Arc::clone(&hook_mgr);
+        tokio::spawn(async move {
+            let mut mgr = hook_mgr.lock().await;
+            mgr.read_responses(move |resp: HookResponse| {
+                let _ = hook_tx.send(ShellEvent::Hook(resp));
+            })
+            .await;
+        });
+    }
+    // broadcast initial session event
+    let _ = evt_tx.send(ShellEvent::Codex(session_event.clone()));
+    // spawn model event producer: forward to hooks then to channel
+    {
+        let hook_mgr = Arc::clone(&hook_mgr);
+        let evt_tx = evt_tx.clone();
+        tokio::spawn(async move {
+            while let Ok(e) = codex.next_event().await {
+                let mut mgr = hook_mgr.lock().await;
+                mgr.handle_event(&e);
+                let _ = evt_tx.send(ShellEvent::Codex(e));
+            }
+        });
+    }
 
     // spawn stdin reader: lines sent into input_rx
     let (input_tx, mut input_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
@@ -127,5 +167,6 @@ pub async fn run_main(cli: Cli, _sandbox_exe: Option<std::path::PathBuf>) -> Res
             }
         }
     }
+    // end
     Ok(())
 }

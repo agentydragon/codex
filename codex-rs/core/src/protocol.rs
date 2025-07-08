@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 use crate::config_types::ReasoningEffort as ReasoningEffortConfig;
 use crate::config_types::ReasoningSummary as ReasoningSummaryConfig;
+use crate::hooks::HookResponse;
 use crate::message_history::HistoryEntry;
 use crate::model_provider_info::ModelProviderInfo;
 
@@ -391,6 +392,8 @@ pub enum EventMsg {
 
     /// Response to GetHistoryEntryRequest.
     GetHistoryEntryResponse(GetHistoryEntryResponseEvent),
+    /// Responses emitted by external hook processes.
+    HookResponse(HookResponse),
 }
 
 // Individual event payload types matching each `EventMsg` variant.

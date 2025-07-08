@@ -191,6 +191,9 @@ impl EventProcessor {
                     "codex".style(self.bold).style(self.magenta)
                 );
             }
+            EventMsg::HookResponse(_) => {
+                // ignore hook responses
+            }
             EventMsg::ExecCommandBegin(ExecCommandBeginEvent {
                 call_id,
                 command,
