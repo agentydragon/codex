@@ -1,4 +1,5 @@
 //! codex-shell: lightweight inline shell mode for codex-rs
+//! draft-buffer stub for input capture (step 2)
 
 use anyhow::Result;
 use std::io::{self, Write};
@@ -55,8 +56,17 @@ fn render_event(evt: &ShellEvent) {
                     label = label,
                     spaces = spaces
                 ),
-                EventMsg::AgentReasoning(r) if !r.text.is_empty() => {
-                    println!("\x1b[34m{}{}{}\x1b[0m", label, spaces, r.text)
+                EventMsg::AgentReasoning(r) if !r.text.is_empty() => println!(
+                    "\x1b[34m{label}{spaces}{text}\x1b[0m",
+                    label = label,
+                    spaces = spaces,
+                    text = r.text
+                ),
+                EventMsg::TaskStarted => println!("\x1b[34m{label}{spaces}⏳\x1b[0m"),
+                EventMsg::TaskComplete(tc) => {
+                    if let Some(msg) = &tc.last_agent_message {
+                        println!("\x1b[34m{label}{spaces}✓ {msg}\x1b[0m");
+                    }
                 }
                 other => println!("\x1b[34m{label}{spaces}{other:?}\x1b[0m"),
             }
