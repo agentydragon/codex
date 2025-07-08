@@ -380,6 +380,9 @@ pub struct ConfigOverrides {
     pub model_provider: Option<String>,
     pub config_profile: Option<String>,
     pub codex_linux_sandbox_exe: Option<PathBuf>,
+    /// Optional override of the user instructions file (`instructions.md`).
+    /// When set, reads instructions from this file instead of the default location.
+    pub instructions_file: Option<PathBuf>,
 }
 
 impl Config {
@@ -390,7 +393,28 @@ impl Config {
         overrides: ConfigOverrides,
         codex_home: PathBuf,
     ) -> std::io::Result<Self> {
-        let instructions = Self::load_instructions(Some(&codex_home));
+        // Load user instructions: override if CLI flag provided, else default to instructions.md
+        let instructions = if let Some(ref path) = overrides.instructions_file {
+            match std::fs::read_to_string(path) {
+                Ok(contents) => {
+                    let s = contents.trim();
+                    if s.is_empty() {
+                        None
+                    } else {
+                        Some(s.to_string())
+                    }
+                }
+                Err(e) => {
+                    return Err(std::io::Error::other(format!(
+                        "failed to read instructions override '{}': {}",
+                        path.display(),
+                        e
+                    )));
+                }
+            }
+        } else {
+            Self::load_instructions(Some(&codex_home))
+        };
 
         // Destructure ConfigOverrides fully to ensure all overrides are applied.
         let ConfigOverrides {
@@ -401,6 +425,7 @@ impl Config {
             model_provider,
             config_profile: config_profile_key,
             codex_linux_sandbox_exe,
+            ..
         } = overrides;
 
         let config_profile = match config_profile_key.or(cfg.profile) {

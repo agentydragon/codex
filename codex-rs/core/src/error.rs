@@ -144,7 +144,7 @@ mod tests {
     fn landlock_sandbox_executable_error_msg() {
         let msg = CodexErr::LandlockSandboxExecutableNotProvided.to_string();
         assert!(
-            msg.contains("codex-linux-sandbox helper"),
+            msg.contains("`codex-linux-sandbox` helper"),
             "unexpected error message: {}",
             msg
         );

@@ -49,8 +49,13 @@ pub struct Cli {
     #[arg(long = "output-last-message")]
     pub last_message_file: Option<PathBuf>,
 
-    /// Initial instructions for the agent. If not provided as an argument (or
-    /// if `-` is used), instructions are read from stdin.
+    /// Path to a file containing initial instructions for the agent. If set,
+    /// this file's contents will override the default instructions.md.
+    #[arg(long = "instructions", value_name = "FILE")]
+    pub instructions_file: Option<PathBuf>,
+
+    /// Initial prompt for the agent. If not provided as an argument (or
+    /// if `-` is used), prompt is read from stdin.
     #[arg(value_name = "PROMPT")]
     pub prompt: Option<String>,
 }

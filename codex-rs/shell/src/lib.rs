@@ -44,7 +44,7 @@ pub async fn run_main(cli: Cli, _sandbox_exe: Option<std::path::PathBuf>) -> Res
         session_id
     );
     // Set terminal title to session
-    print!("\x1b]0;codex-shell {}\x07", session_id);
+    print!("\x1b]0;codex-shell {session_id}\x07");
     println!("/help = help, Enter = send, Ctrl-X = toggle mode, Ctrl-D = quit");
 
     // Initialize Codex client and display session start
@@ -67,7 +67,7 @@ pub async fn run_main(cli: Cli, _sandbox_exe: Option<std::path::PathBuf>) -> Res
         tokio::select! {
             _ = ctrl_c.notified() => break,
             maybe = evt_rx.recv() => match maybe {
-                Some(e) => println!("{:?}", e),
+                Some(e) => println!("{e:?}"),
                 None => break,
             }
         }

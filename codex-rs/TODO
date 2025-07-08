@@ -1,15 +1,4 @@
-"non-fullscreen mode" still takes up whole cli screen, with first line now reading 'Messaes (tab to focus)'
-in particular there should *NOT* be a "messages (tab to focus)" thing at the top of the screen.
-because there should not even be "tab to focus" as a function at all. user should *always* remain typing into the prompt/bottom bar.
-because the mesages are just added into the backlog as they are sent/as they arrive, *possibly* with a little bit of lightweight editing to, say, go from "(progress indicator) command in progress" to "(checkmark) done".
-
 ls ... | rg ... should be allowed
-skip_git_repo_check should be a warning that shows up immediately
-(config_profile exists)
---dump-config flag
 - merge predicates and execpolicy; execpolicy is not hooked up into codex-rs
 core/src/is_safe_command.rs = whitelist
-
-
 /exec-history command isn't needed
-

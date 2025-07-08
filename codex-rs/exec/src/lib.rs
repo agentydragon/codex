@@ -36,6 +36,7 @@ pub async fn run_main(cli: Cli, codex_linux_sandbox_exe: Option<PathBuf>) -> any
         skip_git_repo_check,
         color,
         last_message_file,
+        instructions_file,
         prompt,
         config_overrides,
         dump_config,
@@ -102,6 +103,7 @@ pub async fn run_main(cli: Cli, codex_linux_sandbox_exe: Option<PathBuf>) -> any
         cwd: cwd.map(|p| p.canonicalize().unwrap_or(p)),
         model_provider: None,
         codex_linux_sandbox_exe,
+        instructions_file,
     };
     // Parse `-c` overrides.
     let cli_kv_overrides = match config_overrides.parse_overrides() {

@@ -358,7 +358,8 @@ fn apply_hunks_to_files(hunks: &[Hunk]) -> anyhow::Result<AffectedPaths> {
         match hunk {
             Hunk::AddFile { path, contents } => {
                 if let Some(parent) = path.parent()
-                    && !parent.as_os_str().is_empty() {
+                    && !parent.as_os_str().is_empty()
+                {
                     std::fs::create_dir_all(parent).with_context(|| {
                         format!("Failed to create parent directories for {}", path.display())
                     })?;
@@ -381,7 +382,8 @@ fn apply_hunks_to_files(hunks: &[Hunk]) -> anyhow::Result<AffectedPaths> {
                     derive_new_contents_from_chunks(path, chunks)?;
                 if let Some(dest) = move_path {
                     if let Some(parent) = dest.parent()
-                        && !parent.as_os_str().is_empty() {
+                        && !parent.as_os_str().is_empty()
+                    {
                         std::fs::create_dir_all(parent).with_context(|| {
                             format!("Failed to create parent directories for {}", dest.display())
                         })?;
