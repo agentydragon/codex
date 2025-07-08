@@ -11,7 +11,7 @@ Below is the step-by-step TODO list to implement the inline append-mode shell.
 - [ ] **Spinners & icons**: display a spinner glyph for in-progress commands/model sampling, replace with success/failure icons on completion; all styles configurable.
 - [ ] **Queued-message buffer**: while a command is running, accept user input into a queued buffer, show queued draft lines above the prompt, without injecting into history.
 - [ ] **Queued-message insertion**: on send or auto-approval, insert queued messages into history at the actual send position and remove the queued placeholder.
-- [ ] **Approval panel**: render approval requests in a panel immediately above the prompt without displacing the prompt.
+- [ ] **Approval panel**: render approval requests inline above the prompt without displacing it; use Ctrl‑key shortcuts (e.g. Ctrl‑Y/Ctrl‑N) for approve/deny to avoid accidental triggers.
 - [ ] **Auto-approved collapse**: collapse output of commands auto-approved by the model into one summary line; collapse patch diffs into `+<added> -<deleted>` counts; apply syntax coloring only to patches/markdown.
 - [ ] **Unit tests for rendering**: write unit tests feeding example event sequences (denied exec, auto-approved hook, tool failure, reasoning, text, shell-command) into the renderer and assert ANSI output correctness.
 - [ ] **Interactive shell commands via PTY**: spawn shell-command inputs in a pseudo-tty so stdin/stdout are interactive; ensure sensitive prompts (e.g. sudo password) are read directly and not captured or sent to the model.

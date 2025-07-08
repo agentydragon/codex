@@ -12,7 +12,7 @@ The shell mode must behave like a regular shell session:
 - **Bottom-only redraw**: ratatui (if used) is restricted to re-rendering just the prompt line(s) at the bottom; history above is never cleared or redrawn.
 - **Inline patch/markdown**: diffs and markdown must render inline with syntax highlighting.
 - **Codex-rs hooks**: pre- and post-command hooks inject events into a unified event layer.
-- **Approval panel**: approval requests appear in a panel immediately above the compose prompt, without moving the prompt.
+- **Approval panel**: approval requests appear inline in a panel above the compose prompt, without moving the prompt; approval/denial uses Ctrl‑key shortcuts (e.g. Ctrl‑Y/Ctrl‑N) to reduce accidental triggers.
 - **Event-layer consolidation**: all lifecycle events (hooks, approvals, logs) use a single, consistent display layer.
 - **Draft-focus preservation**: user draft input never loses focus or cursor position across redraws and command output.
 - **Terminal title updates**: update the terminal title bar with the session identifier.
