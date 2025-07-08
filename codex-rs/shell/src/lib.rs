@@ -9,6 +9,8 @@ use codex_core::config::ConfigOverrides;
 use codex_core::hooks::HookManager;
 use codex_core::hooks::HookResponse;
 use codex_core::protocol::Event;
+use std::io::Write;
+use std::io::{self};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -18,6 +20,19 @@ use tokio::sync::Mutex;
 enum ShellEvent {
     Codex(Event),
     Hook(HookResponse),
+}
+
+/// Print a single event inline (append-only).
+fn render_event(evt: &ShellEvent) {
+    // TODO: format events with ANSI styling
+    println!("{evt:?}");
+}
+
+/// Redraw the prompt line in place after an event.
+fn redraw_prompt() {
+    // TODO: reposition cursor and clear prompt lines via ANSI
+    print!("> ");
+    let _ = io::stdout().flush();
 }
 
 /// CLI options for codex-shell
