@@ -60,7 +60,10 @@ impl Prompt {
                         sections.push(contents);
                     }
                     Err(e) => {
-                        eprintln!("Warning: failed to read base instructions override '{}': {}", path, e);
+                        eprintln!(
+                            "Warning: failed to read base instructions override '{}': {}",
+                            path, e
+                        );
                         eprintln!("Falling back to default base instructions");
                         sections.push(BASE_INSTRUCTIONS.to_string());
                     }

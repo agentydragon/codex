@@ -91,22 +91,22 @@ pub async fn run_inspect_env(
     } else {
         "None"
     };
-    println!("Container technology: {}\n", tech);
+    println!("Container technology: {tech}\n");
     // Environment variables (sorted)
     println!("Environment Variables:");
     let mut envs: Vec<_> = std::env::vars().collect();
     envs.sort_by(|a, b| a.0.cmp(&b.0));
     for (k, v) in envs {
-        println!("  {}={}", k, v);
+        println!("  {k}={v}");
     }
     println!();
 
     // Mounts.
     println!("Mounts:");
-    println!("  {:<width$}  {}", "PATH", "MODE", width = width);
+    println!("  {:<width$}  MODE", "PATH", width = width);
     println!("  {:-<width$}  {:-<4}", "", "", width = width);
     for (path, mode) in &mounts {
-        println!("  {:<width$}  {}", path, mode, width = width);
+        println!("  {path:<width$}  {mode}");
     }
     println!();
     // Working directory inside container
@@ -116,7 +116,7 @@ pub async fn run_inspect_env(
     // Permissions.
     println!("Permissions:");
     for perm in policy.permissions() {
-        println!("  - {:?}", perm);
+        println!("  - {perm:?}");
     }
     println!();
 
@@ -126,7 +126,7 @@ pub async fn run_inspect_env(
     } else {
         "disabled"
     };
-    println!("Network: {}", net);
+    println!("Network: {net}");
     if net == "disabled" {
         println!(
             "  Outbound syscalls blocked: connect, accept, bind, listen, sendto, recvfrom, socket (non-AF_UNIX)"

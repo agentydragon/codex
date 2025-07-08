@@ -34,7 +34,6 @@ mod chatwidget;
 mod citation_regex;
 mod cli;
 // mod color removed: replaced by style-based parsing
-mod config_reload;
 mod confirm_ctrl_d;
 pub mod context;
 mod conversation_history_widget;
@@ -58,6 +57,7 @@ pub use cli::Cli;
 
 pub use style::parse_style;
 
+#[allow(clippy::print_stdout)]
 pub fn run_main(cli: Cli, codex_linux_sandbox_exe: Option<PathBuf>) -> std::io::Result<()> {
     let (sandbox_policy, approval_policy) = if cli.full_auto {
         (
@@ -99,6 +99,12 @@ pub fn run_main(cli: Cli, codex_linux_sandbox_exe: Option<PathBuf>) -> std::io::
             }
         }
     };
+
+    // If requested, dump the effective config and exit.
+    if cli.dump_config {
+        println!("{config:#?}");
+        return Ok(());
+    }
 
     // Determine log file path: use --debug-log if set, otherwise default under config log_dir
     let log_path = if let Some(path) = &cli.debug_log {
@@ -148,10 +154,10 @@ pub fn run_main(cli: Cli, codex_linux_sandbox_exe: Option<PathBuf>) -> std::io::
     let show_login_screen = should_show_login_screen(&config);
 
     // Determine whether we need to display the "not a git repo" warning
-    // modal. The flag is shown when the current working directory is *not*
-    // inside a Git repository **and** the user did *not* pass the
-    // `--allow-no-git-exec` flag.
-    let show_git_warning = !cli.skip_git_repo_check && !is_inside_git_repo(&config);
+    // modal. The warning is shown when the current working directory is *not*
+    // inside a Git repository and the user has not opted to skip this check.
+    let skip_git_repo_check_global = cli.skip_git_repo_check || config.skip_git_repo_check;
+    let show_git_warning = !skip_git_repo_check_global && !is_inside_git_repo(&config);
 
     try_run_ratatui_app(cli, config, show_login_screen, show_git_warning, log_rx);
     Ok(())
@@ -186,14 +192,15 @@ fn run_ratatui_app(
     // the status indicator instead of breaking the alternate screen – the
     // normal colour‑eyre hook writes to stderr which would corrupt the UI.
     // IMPORTANT: Also restore terminal to prevent broken state on panic.
+    #[allow(clippy::print_stderr, clippy::uninlined_format_args)]
     std::panic::set_hook(Box::new(|info| {
         // First try to restore the terminal
         if let Err(e) = tui::restore() {
             // If we can't restore, at least try to print to stderr
-            eprintln!("Failed to restore terminal on panic: {}", e);
+            eprintln!("Failed to restore terminal on panic: {e}");
         }
         // Then log the panic info
-        eprintln!("panic: {}", info);
+        eprintln!("panic: {info}");
         tracing::error!("panic: {info}");
     }));
     let (mut terminal, mut mouse_capture) = tui::init(&config)?;
@@ -227,45 +234,6 @@ fn run_ratatui_app(
         tokio::spawn(async move {
             while let Some(line) = log_rx.recv().await {
                 app_event_tx.send(crate::app_event::AppEvent::LatestLog(line));
-            }
-        });
-    }
-
-    if !cli.no_config_reload {
-        // Watch config.toml for changes and prompt reload.
-        let app_event_tx = app.event_sender();
-        let config_path = config.codex_home.join("config.toml");
-        std::thread::spawn(move || {
-            use notify::EventKind;
-            use notify::RecommendedWatcher;
-            use notify::RecursiveMode;
-            use notify::Watcher;
-            use std::sync::mpsc::channel;
-            use std::time::Duration;
-            let (tx, rx) = channel();
-            let mut watcher: RecommendedWatcher = Watcher::new(tx, notify::Config::default())
-                .unwrap_or_else(|e| {
-                    tracing::error!("config watcher failed: {e}");
-                    std::process::exit(1);
-                });
-            if watcher
-                .watch(&config_path, RecursiveMode::NonRecursive)
-                .is_err()
-            {
-                tracing::error!("Failed to watch config.toml");
-                return;
-            }
-            let mut last = std::fs::read_to_string(&config_path).unwrap_or_default();
-            for event in rx.into_iter().flatten() {
-                if matches!(event.kind, EventKind::Modify(_)) {
-                    std::thread::sleep(Duration::from_millis(100));
-                    let new = std::fs::read_to_string(&config_path).unwrap_or_default();
-                    if new != last {
-                        let diff = crate::config_reload::generate_diff(&last, &new);
-                        last = new.clone();
-                        app_event_tx.send(crate::app_event::AppEvent::ConfigReloadRequest(diff));
-                    }
-                }
             }
         });
     }

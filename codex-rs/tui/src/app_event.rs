@@ -37,6 +37,8 @@ pub(crate) enum AppEvent {
     InlineMountRemove(String),
     /// Inline inspect-env DSL: raw argument string (unused).
     InlineInspectEnv(String),
+    /// Inline config DSL: raw argument string (unused).
+    InlineConfig(String),
     /// Perform mount-add: create symlink and update sandbox policy.
     MountAdd {
         host: std::path::PathBuf,
@@ -47,12 +49,6 @@ pub(crate) enum AppEvent {
     MountRemove {
         container: std::path::PathBuf,
     },
-    /// Notify that the on-disk config.toml has changed and present diff.
-    ConfigReloadRequest(String),
-    /// Apply the new on-disk config.toml.
-    ConfigReloadApply,
-    /// Ignore on-disk config.toml changes and continue with old config.
-    ConfigReloadIgnore,
     /// Run an arbitrary shell command in the agent's container (from hotkey prompt).
     ShellCommand(String),
     /// Result of a previously-invoked shell command: call ID, stdout, stderr, and exit code.
@@ -79,6 +75,7 @@ impl PartialEq for AppEvent {
             (InlineMountAdd(a), InlineMountAdd(b)) => a == b,
             (InlineMountRemove(a), InlineMountRemove(b)) => a == b,
             (InlineInspectEnv(a), InlineInspectEnv(b)) => a == b,
+            (InlineConfig(a), InlineConfig(b)) => a == b,
             (
                 MountAdd {
                     host: h1,
@@ -92,9 +89,6 @@ impl PartialEq for AppEvent {
                 },
             ) => h1 == h2 && c1 == c2 && m1 == m2,
             (MountRemove { container: c1 }, MountRemove { container: c2 }) => c1 == c2,
-            (ConfigReloadRequest(a), ConfigReloadRequest(b)) => a == b,
-            (ConfigReloadApply, ConfigReloadApply) => true,
-            (ConfigReloadIgnore, ConfigReloadIgnore) => true,
             (ShellCommand(a), ShellCommand(b)) => a == b,
             (
                 ShellCommandResult {

@@ -34,6 +34,7 @@ use tracing::warn;
 use uuid::Uuid;
 
 use crate::WireApi;
+use crate::api_logger::ApiLogger;
 use crate::client::ModelClient;
 use crate::client_common::Prompt;
 use crate::client_common::ResponseEvent;
@@ -592,11 +593,20 @@ async fn submission_loop(
                     return;
                 }
 
+                // session-scoped raw API logging
+                let api_logger = match ApiLogger::new(&config, session_id).await {
+                    Ok(l) => Some(l),
+                    Err(e) => {
+                        tracing::warn!("failed to initialise API logger: {e}");
+                        None
+                    }
+                };
                 let client = ModelClient::new(
                     model.clone(),
                     provider.clone(),
                     model_reasoning_effort,
                     model_reasoning_summary,
+                    api_logger,
                 );
 
                 // abort any current running session and clone its state

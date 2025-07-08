@@ -43,10 +43,22 @@ impl<'a> BottomPaneView<'a> for InspectEnvView {
         use KeyCode::*;
         match key_event.code {
             Enter | Esc => self.done = true,
-            Left => if self.selected_tab > 0 { self.selected_tab -= 1 },
+            Left => {
+                if self.selected_tab > 0 {
+                    self.selected_tab -= 1
+                }
+            }
             Right => self.selected_tab += 1,
-            Up => if let Some(s) = self.scrolls.get_mut(self.selected_tab) { *s = s.saturating_sub(1) },
-            Down => if let Some(s) = self.scrolls.get_mut(self.selected_tab) { *s = s.saturating_add(1) },
+            Up => {
+                if let Some(s) = self.scrolls.get_mut(self.selected_tab) {
+                    *s = s.saturating_sub(1)
+                }
+            }
+            Down => {
+                if let Some(s) = self.scrolls.get_mut(self.selected_tab) {
+                    *s = s.saturating_add(1)
+                }
+            }
             _ => {}
         }
         pane.request_redraw();
@@ -77,23 +89,49 @@ impl<'a> BottomPaneView<'a> for InspectEnvView {
         // init scrolls
         let tab_count = secs.len();
         let mut scrolls = self.scrolls.clone();
-        if scrolls.len() != tab_count { scrolls = vec![0; tab_count]; }
+        if scrolls.len() != tab_count {
+            scrolls = vec![0; tab_count];
+        }
         // ensure selected_tab in range
-        let sel = self.selected_tab.min(tab_count-1);
+        let sel = self.selected_tab.min(tab_count - 1);
         // render block
-        let block = Block::default().borders(Borders::ALL).border_type(BorderType::Rounded)
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title("Inspect Env (←/→ tabs, ↑/↓ scroll, Enter/Esc to close)");
         block.render(area, buf);
         // inner area
-        let inner = Rect { x: area.x+1, y: area.y+1, width: area.width.saturating_sub(2), height: area.height.saturating_sub(2) };
+        let inner = Rect {
+            x: area.x + 1,
+            y: area.y + 1,
+            width: area.width.saturating_sub(2),
+            height: area.height.saturating_sub(2),
+        };
         // tabs
-        let titles: Vec<&str> = secs.iter().map(|(t,_)| t.as_str()).collect();
-        Tabs::new(titles).select(sel).block(Block::default()).render(
-            Rect { x: inner.x, y: inner.y, width: inner.width, height: 1 }, buf);
+        let titles: Vec<&str> = secs.iter().map(|(t, _)| t.as_str()).collect();
+        Tabs::new(titles)
+            .select(sel)
+            .block(Block::default())
+            .render(
+                Rect {
+                    x: inner.x,
+                    y: inner.y,
+                    width: inner.width,
+                    height: 1,
+                },
+                buf,
+            );
         // content area below tabs
-        let content_area = Rect { x: inner.x, y: inner.y+1, width: inner.width, height: inner.height.saturating_sub(1) };
+        let content_area = Rect {
+            x: inner.x,
+            y: inner.y + 1,
+            width: inner.width,
+            height: inner.height,
+        };
         let text = secs[sel].1.join("\n");
-        Paragraph::new(text).scroll((scrolls[sel], 0)).render(content_area, buf);
+        Paragraph::new(text)
+            .scroll((scrolls[sel], 0))
+            .render(content_area, buf);
     }
 }
 

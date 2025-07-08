@@ -60,3 +60,4 @@ similar = "2"
 
 [dev-dependencies]
 pretty_assertions = "1"
+expectrl = "0.5"

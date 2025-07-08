@@ -37,6 +37,10 @@ pub struct Cli {
     #[clap(skip)]
     pub config_overrides: CliConfigOverrides,
 
+    /// Dump the effective configuration and exit.
+    #[arg(long, default_value_t = false)]
+    pub dump_config: bool,
+
     /// Specifies color settings for use in the output.
     #[arg(long = "color", value_enum, default_value_t = Color::Auto)]
     pub color: Color,

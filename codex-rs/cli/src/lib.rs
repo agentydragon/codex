@@ -1,7 +1,7 @@
 pub mod debug_sandbox;
+mod exit_status;
 /// Inspect sandbox/container environment
 pub mod inspect_env;
-mod exit_status;
 pub mod login;
 pub mod proto;
 

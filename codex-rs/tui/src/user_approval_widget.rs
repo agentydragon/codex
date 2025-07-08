@@ -436,7 +436,8 @@ impl WidgetRef for &UserApprovalWidget<'_> {
         }
         outer.render(area, buf);
         // Render prompt with configured foreground style
-        self.confirmation_prompt.clone()
+        self.confirmation_prompt
+            .clone()
             .style(self.fg_style)
             .render(prompt_chunk, buf);
         Widget::render(List::new(lines), response_chunk, buf);

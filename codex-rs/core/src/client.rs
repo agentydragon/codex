@@ -16,6 +16,8 @@ use tracing::debug;
 use tracing::trace;
 use tracing::warn;
 
+use crate::api_logger::ApiLogger;
+use crate::api_logger::TS_FORMAT;
 use crate::chat_completions::AggregateStreamExt;
 use crate::chat_completions::stream_chat_completions;
 use crate::client_common::Prompt;
@@ -36,6 +38,8 @@ use crate::model_provider_info::WireApi;
 use crate::models::ResponseItem;
 use crate::openai_tools::create_tools_json_for_responses_api;
 use crate::util::backoff;
+use time::OffsetDateTime;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct ModelClient {
@@ -44,6 +48,7 @@ pub struct ModelClient {
     provider: ModelProviderInfo,
     effort: ReasoningEffortConfig,
     summary: ReasoningSummaryConfig,
+    api_logger: Option<ApiLogger>,
 }
 
 impl ModelClient {
@@ -52,6 +57,7 @@ impl ModelClient {
         provider: ModelProviderInfo,
         effort: ReasoningEffortConfig,
         summary: ReasoningSummaryConfig,
+        api_logger: Option<ApiLogger>,
     ) -> Self {
         Self {
             model: model.to_string(),
@@ -59,6 +65,7 @@ impl ModelClient {
             provider,
             effort,
             summary,
+            api_logger,
         }
     }
 
@@ -70,9 +77,14 @@ impl ModelClient {
             WireApi::Responses => self.stream_responses(prompt).await,
             WireApi::Chat => {
                 // Create the raw streaming connection first.
-                let response_stream =
-                    stream_chat_completions(prompt, &self.model, &self.client, &self.provider)
-                        .await?;
+                let response_stream = stream_chat_completions(
+                    prompt,
+                    &self.model,
+                    &self.client,
+                    &self.provider,
+                    self.api_logger.as_ref(),
+                )
+                .await?;
 
                 // Wrap it with the aggregation adapter so callers see *only*
                 // the final assistant message per turn (matching the
@@ -127,6 +139,18 @@ impl ModelClient {
         let url = format!("{}/responses", base_url);
         trace!("POST to {url}: {}", serde_json::to_string(&payload)?);
 
+        // assign a unique request ID and log the outgoing request
+        let req_id = Uuid::new_v4().to_string();
+        if let Some(logger) = &self.api_logger {
+            let entry = serde_json::json!({
+                "ts": OffsetDateTime::now_utc().format(TS_FORMAT).unwrap_or_default(),
+                "type": "request",
+                "req_id": req_id,
+                "url": url,
+                "payload": payload,
+            });
+            let _ = logger.log(&entry).await;
+        }
         let mut attempt = 0;
         loop {
             attempt += 1;
@@ -166,8 +190,18 @@ impl ModelClient {
                     // small and this branch only runs on error paths so the extra allocation is
                     // negligible.
                     if !(status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error()) {
-                        // Surface the error body to callers. Use `unwrap_or_default` per Clippy.
+                        // read body and log
                         let body = (res.text().await).unwrap_or_default();
+                        if let Some(logger) = &self.api_logger {
+                            let entry = serde_json::json!({
+                                "ts": OffsetDateTime::now_utc().format(TS_FORMAT).unwrap_or_default(),
+                                "type": "error",
+                                "req_id": req_id,
+                                "status": status.as_u16(),
+                                "body": body,
+                            });
+                            let _ = logger.log(&entry).await;
+                        }
                         return Err(CodexErr::UnexpectedStatus(status, body));
                     }
 
@@ -188,6 +222,15 @@ impl ModelClient {
                     tokio::time::sleep(delay).await;
                 }
                 Err(e) => {
+                    if let Some(logger) = &self.api_logger {
+                        let entry = serde_json::json!({
+                            "ts": OffsetDateTime::now_utc().format(TS_FORMAT).unwrap_or_default(),
+                            "type": "error",
+                            "req_id": req_id,
+                            "error": e.to_string(),
+                        });
+                        let _ = logger.log(&entry).await;
+                    }
                     if attempt > *OPENAI_REQUEST_MAX_RETRIES {
                         return Err(e.into());
                     }

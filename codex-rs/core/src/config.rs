@@ -15,6 +15,7 @@ use crate::protocol::SandboxPermission;
 use crate::protocol::SandboxPolicy;
 use dirs::home_dir;
 use serde::Deserialize;
+use serde::de::IntoDeserializer;
 use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
@@ -120,6 +121,12 @@ pub struct Config {
     /// Collection of settings that are specific to the TUI.
     pub tui: Tui,
 
+    /// Unrecognized top-level keys from the configuration file.
+    pub unrecognized_keys: Vec<String>,
+
+    /// Suppress the "not a git repo" warning in the TUI.
+    pub skip_git_repo_check: bool,
+
     /// Path to the `codex-linux-sandbox` executable. This must be set if
     /// [`crate::exec::SandboxType::LinuxSeccomp`] is used. Note that this
     /// cannot be set in the config file: it must be set in code via
@@ -161,12 +168,24 @@ impl Config {
             apply_toml_override(&mut root_value, &path, value);
         }
 
-        // Step 3: deserialize into `ConfigToml` so that Serde can enforce the
-        // correct types.
-        let cfg: ConfigToml = root_value.try_into().map_err(|e| {
-            tracing::error!("Failed to deserialize overridden config: {e}");
-            std::io::Error::new(std::io::ErrorKind::InvalidData, e)
-        })?;
+        // Step 3: deserialize into `ConfigToml`, capturing unknown keys with serde_ignored.
+        let mut unknown_keys = Vec::new();
+        let cfg: ConfigToml = {
+            let deserializer = root_value.clone().into_deserializer();
+            let mut cb = |path: serde_ignored::Path<'_>| unknown_keys.push(path.to_string());
+            let de = serde_ignored::Deserializer::new(deserializer, &mut cb);
+            ConfigToml::deserialize(de).map_err(|e| {
+                tracing::error!("Failed to deserialize overridden config: {e}");
+                std::io::Error::new(std::io::ErrorKind::InvalidData, e)
+            })?
+        };
+        if !unknown_keys.is_empty() {
+            unknown_keys.sort();
+            unknown_keys.dedup();
+            for key in unknown_keys {
+                tracing::warn!(?key, "unrecognized config key");
+            }
+        }
 
         // Step 4: merge with the strongly-typed overrides.
         Self::load_from_base_config_with_overrides(cfg, overrides, codex_home)
@@ -307,7 +326,12 @@ pub struct ConfigToml {
     /// output will be hyperlinked using the specified URI scheme.
     pub file_opener: Option<UriBasedFileOpener>,
 
+    /// Suppress the "not a git repo" warning when running the TUI client.
+    #[serde(default)]
+    pub skip_git_repo_check: Option<bool>,
+
     /// Collection of settings that are specific to the TUI.
+    #[serde(default)]
     pub tui: Option<Tui>,
 
     /// When set to `true`, `AgentReasoning` events will be hidden from the
@@ -480,12 +504,16 @@ impl Config {
             history,
             file_opener: cfg.file_opener.unwrap_or(UriBasedFileOpener::VsCode),
             tui: cfg.tui.unwrap_or_default(),
+            skip_git_repo_check: cfg.skip_git_repo_check.unwrap_or(false),
+            unrecognized_keys: Vec::new(),
             codex_linux_sandbox_exe,
 
             hide_agent_reasoning: cfg.hide_agent_reasoning.unwrap_or(false),
             model_reasoning_effort: cfg.model_reasoning_effort.unwrap_or_default(),
             model_reasoning_summary: cfg.model_reasoning_summary.unwrap_or_default(),
         };
+        // Capture any unrecognized TUI style keys (e.g. defined under [tui.styles]).
+        // done with loading
         Ok(config)
     }
 
@@ -849,6 +877,8 @@ disable_response_storage = true
                 history: History::default(),
                 file_opener: UriBasedFileOpener::VsCode,
                 tui: Tui::default(),
+                unrecognized_keys: Vec::new(),
+                skip_git_repo_check: false,
                 codex_linux_sandbox_exe: None,
                 hide_agent_reasoning: false,
                 model_reasoning_effort: ReasoningEffort::default(),
@@ -893,6 +923,8 @@ disable_response_storage = true
             history: History::default(),
             file_opener: UriBasedFileOpener::VsCode,
             tui: Tui::default(),
+            unrecognized_keys: Vec::new(),
+            skip_git_repo_check: false,
             codex_linux_sandbox_exe: None,
             hide_agent_reasoning: false,
             model_reasoning_effort: ReasoningEffort::default(),
@@ -952,6 +984,8 @@ disable_response_storage = true
             history: History::default(),
             file_opener: UriBasedFileOpener::VsCode,
             tui: Tui::default(),
+            unrecognized_keys: Vec::new(),
+            skip_git_repo_check: false,
             codex_linux_sandbox_exe: None,
             hide_agent_reasoning: false,
             model_reasoning_effort: ReasoningEffort::default(),

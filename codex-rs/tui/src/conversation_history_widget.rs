@@ -34,10 +34,13 @@ pub struct ConversationHistoryWidget {
     /// The height of the viewport last time render_ref() was called
     last_viewport_height: StdCell<usize>,
     has_input_focus: bool,
+    /// When true, do not draw an internal scrollbar (non-fullscreen mode).
+    non_fullscreen_mode: bool,
 }
 
 impl ConversationHistoryWidget {
-    pub fn new() -> Self {
+    /// Create a new conversation history widget; set `non_fullscreen_mode` to true to skip internal scrollbar.
+    pub fn new(non_fullscreen_mode: bool) -> Self {
         Self {
             entries: Vec::new(),
             cached_width: StdCell::new(0),
@@ -45,6 +48,7 @@ impl ConversationHistoryWidget {
             num_rendered_lines: StdCell::new(0),
             last_viewport_height: StdCell::new(0),
             has_input_focus: false,
+            non_fullscreen_mode,
         }
     }
 
@@ -343,11 +347,16 @@ impl WidgetRef for ConversationHistoryWidget {
         let inner = block.inner(area);
         let viewport_height = inner.height as usize;
 
+        // Determine whether to draw an internal scrollbar or let the native scrollback handle it.
+        let show_scrollbar = !self.non_fullscreen_mode;
         // Cache (and if necessary recalculate) the wrapped line counts for every
-        // [`HistoryCell`] so that our scrolling math accounts for text
-        // wrapping.  We always reserve one column on the right-hand side for the
-        // scrollbar so that the content never renders "under" the scrollbar.
-        let effective_width = inner.width.saturating_sub(1);
+        // [`HistoryCell`] so that our scrolling math accounts for text wrapping.
+        // Reserve one column for the scrollbar only if enabled.
+        let effective_width = if show_scrollbar {
+            inner.width.saturating_sub(1)
+        } else {
+            inner.width
+        };
 
         if effective_width == 0 {
             return; // Nothing to draw – avoid division by zero.
@@ -440,33 +449,21 @@ impl WidgetRef for ConversationHistoryWidget {
             }
         }
 
-        // Always render a scrollbar *track* so the reserved column is filled.
-        let overflow = num_lines.saturating_sub(viewport_height);
+        // Draw internal scrollbar only when not in non-fullscreen mode.
+        if show_scrollbar {
+            let overflow = num_lines.saturating_sub(viewport_height);
+            let mut scroll_state = ScrollbarState::default()
+                // When no overflow, render only the track without a thumb.
+                .content_length(overflow)
+                .position(scroll_pos);
 
-        let mut scroll_state = ScrollbarState::default()
-            // The Scrollbar widget expects the *content* height minus the
-            // viewport height.  When there is no overflow we still provide 0
-            // so that the widget renders only the track without a thumb.
-            .content_length(overflow)
-            .position(scroll_pos);
-
-        {
-            // Choose a thumb color that stands out only when this pane has focus so that the
-            // user’s attention is naturally drawn to the active viewport. When unfocused we show
-            // a low-contrast thumb so the scrollbar fades into the background without becoming
-            // invisible.
+            // Thumb color highlights focus, else low-contrast.
             let thumb_style = if self.has_input_focus {
                 Style::reset().fg(Color::LightYellow)
             } else {
                 Style::reset().fg(Color::Gray)
             };
 
-            // By default the Scrollbar widget inherits any style that was
-            // present in the underlying buffer cells. That means if a colored
-            // line happens to be underneath the scrollbar, the track (and
-            // potentially the thumb) adopt that color. Explicitly setting the
-            // track/thumb styles ensures we always draw the scrollbar with a
-            // consistent palette regardless of what content is behind it.
             StatefulWidget::render(
                 Scrollbar::new(ScrollbarOrientation::VerticalRight)
                     .begin_symbol(Some("↑"))

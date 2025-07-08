@@ -128,7 +128,7 @@ impl ChatWidget<'_> {
         Self {
             app_event_tx: app_event_tx.clone(),
             codex_op_tx,
-            conversation_history: ConversationHistoryWidget::new(),
+            conversation_history: ConversationHistoryWidget::new(config.tui.non_fullscreen_mode),
             bottom_pane: BottomPane::new(BottomPaneParams {
                 app_event_tx,
                 has_input_focus: true,
@@ -472,11 +472,6 @@ impl ChatWidget<'_> {
         self.bottom_pane.push_mount_remove_interactive();
         self.request_redraw();
     }
-    /// Prompt the user with a config diff and ask to apply or ignore.
-    pub fn push_config_reload(&mut self, diff: String) {
-        self.bottom_pane.push_config_reload(diff);
-        self.request_redraw();
-    }
 
     /// Launch inspect-env output view.
     pub fn push_inspect_env(&mut self) {
@@ -484,20 +479,15 @@ impl ChatWidget<'_> {
         self.request_redraw();
     }
 
-    /// Update the running config and reconstruct bottom pane settings.
-    pub fn update_config(&mut self, config: Config) {
-        self.config = config.clone();
-        self.bottom_pane = BottomPane::new(BottomPaneParams {
-            app_event_tx: self.app_event_tx.clone(),
-            has_input_focus: true,
-            composer_max_rows: config.tui.composer_max_rows,
-            colors: config.tui.colors.clone(),
-        });
-    }
-
     /// Launch exec history view.
     pub fn push_exec_history(&mut self) {
         self.bottom_pane.push_exec_history(&self.config.codex_home);
+        self.request_redraw();
+    }
+
+    /// Launch config view to show effective configuration.
+    pub fn push_config_view(&mut self) {
+        self.bottom_pane.push_config_view(&self.config);
         self.request_redraw();
     }
 

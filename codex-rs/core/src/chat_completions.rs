@@ -16,6 +16,7 @@ use tracing::debug;
 use tracing::trace;
 
 use crate::ModelProviderInfo;
+use crate::api_logger::TS_FORMAT;
 use crate::client_common::Prompt;
 use crate::client_common::ResponseEvent;
 use crate::client_common::ResponseStream;
@@ -27,6 +28,8 @@ use crate::models::ContentItem;
 use crate::models::ResponseItem;
 use crate::openai_tools::create_tools_json_for_chat_completions_api;
 use crate::util::backoff;
+use time::OffsetDateTime;
+use uuid::Uuid;
 
 /// Implementation for the classic Chat Completions API.
 pub(crate) async fn stream_chat_completions(
@@ -34,6 +37,7 @@ pub(crate) async fn stream_chat_completions(
     model: &str,
     client: &reqwest::Client,
     provider: &ModelProviderInfo,
+    api_logger: Option<&crate::api_logger::ApiLogger>,
 ) -> Result<ResponseStream> {
     // Build messages array, buffering user turns that arrive mid-tool invocation
     let mut messages = Vec::<serde_json::Value>::new();
@@ -149,6 +153,18 @@ pub(crate) async fn stream_chat_completions(
         "POST to {url}: {}",
         serde_json::to_string_pretty(&payload).unwrap_or_default()
     );
+    // record request with unique ID
+    let req_id = Uuid::new_v4().to_string();
+    if let Some(logger) = api_logger {
+        let entry = serde_json::json!({
+            "ts": OffsetDateTime::now_utc().format(TS_FORMAT).unwrap_or_default(),
+            "type": "request",
+            "req_id": req_id,
+            "url": url,
+            "payload": payload,
+        });
+        let _ = logger.log(&entry).await;
+    }
 
     let api_key = provider.api_key()?;
     let mut attempt = 0;
@@ -176,6 +192,16 @@ pub(crate) async fn stream_chat_completions(
                 let status = res.status();
                 if !(status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error()) {
                     let body = (res.text().await).unwrap_or_default();
+                    if let Some(logger) = api_logger {
+                        let entry = serde_json::json!({
+                            "ts": OffsetDateTime::now_utc().format(TS_FORMAT).unwrap_or_default(),
+                            "type": "error",
+                            "req_id": req_id,
+                            "status": status.as_u16(),
+                            "body": body,
+                        });
+                        let _ = logger.log(&entry).await;
+                    }
                     return Err(CodexErr::UnexpectedStatus(status, body));
                 }
 
@@ -195,6 +221,15 @@ pub(crate) async fn stream_chat_completions(
                 tokio::time::sleep(delay).await;
             }
             Err(e) => {
+                if let Some(logger) = api_logger {
+                    let entry = serde_json::json!({
+                        "ts": OffsetDateTime::now_utc().format(TS_FORMAT).unwrap_or_default(),
+                        "type": "error",
+                        "req_id": req_id,
+                        "error": e.to_string(),
+                    });
+                    let _ = logger.log(&entry).await;
+                }
                 if attempt > *OPENAI_REQUEST_MAX_RETRIES {
                     return Err(e.into());
                 }

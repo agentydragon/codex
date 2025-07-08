@@ -89,6 +89,11 @@ pub struct Tui {
     /// using the mouse without needing to hold down a modifier key.
     #[serde(default)]
     pub disable_mouse_capture: bool,
+    /// When `true`, do not switch to the alternate-screen buffer so that all output
+    /// remains in the normal terminal scrollback. The prompt and interactive widgets
+    /// still render via ratatui at the bottom.
+    #[serde(default)]
+    pub non_fullscreen_mode: bool,
 
     /// When `true`, omit blank lines immediately following Markdown headings
     /// (levels 1–6) in TUI rendering for more compact vertical spacing.
@@ -146,15 +151,16 @@ impl Default for Tui {
     fn default() -> Self {
         Self {
             disable_mouse_capture: Default::default(),
+            non_fullscreen_mode: Default::default(),
             markdown_compact: Default::default(),
             header_compact: Default::default(),
             message_spacing: Default::default(),
             sender_break_line: Default::default(),
+            colors: Colors::default(),
             composer_max_rows: default_composer_max_rows(),
             editor: default_editor(),
             require_double_ctrl_d: false,
             double_ctrl_d_timeout_secs: default_double_ctrl_d_timeout_secs(),
-            colors: Colors::default(),
         }
     }
 }

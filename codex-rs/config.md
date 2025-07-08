@@ -199,19 +199,13 @@ sandbox_permissions = [
 
 User-defined predicate scripts that vote on each shell command before manual approval.
 
-## no_config_reload
-
-When running the TUI client (`codex-tui`), set this to `true` (or pass `--no-config-reload`) to disable the prompt that asks to reload `config.toml` when it changes.
-
-```toml
-no_config_reload = true
-```
 Each script is invoked with the full candidate command as its only argument and must
 write exactly one of `allow`, `deny`, or `no-opinion` to stdout.
 
 ```toml
 [[auto_allow]]
 script = "/path/to/approve_predicate.sh"
+
 [[auto_allow]]
 script = "my_predicate --flag"
 ```
@@ -293,6 +287,14 @@ You can specify any number of custom environment variables via the `set` table. 
 [shell_environment_policy]
 inherit = "none"
 set = { MY_VAR = "value", OTHER_FLAG = "true" }
+```
+
+## skip_git_repo_check
+
+When running the TUI client (`codex-tui`), set this to `true` (or pass `--skip-git-repo-check`) to suppress the warning when the current working directory is not inside a Git repository.
+
+```toml
+skip_git_repo_check = true
 ```
 
 The patterns are **glob style**, not full regular expressions: `*` matches any
@@ -543,4 +545,8 @@ message_spacing = false  # defaults to `false`
 
 # Render the sender label on its own line above the message content.
 sender_break_line = false  # defaults to `false`
+# When `true`, do not switch to the alternate-screen buffer so output remains in
+# the normal terminal scrollback, and disable the internal scrollbar so your
+# terminal's native scrollbar handles scrolling.
+non_fullscreen_mode = false  # defaults to `false`
 ```

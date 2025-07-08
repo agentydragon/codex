@@ -1,12 +1,13 @@
 use clap::Parser;
 use codex_cli::LandlockCommand;
 use codex_cli::SeatbeltCommand;
+use codex_cli::inspect_env::InspectEnvArgs;
+use codex_cli::inspect_env::run_inspect_env;
 use codex_cli::login::run_login_with_chatgpt;
 use codex_cli::proto;
 use codex_common::CliConfigOverrides;
 use codex_core::config::find_codex_home;
 use codex_exec::Cli as ExecCli;
-use codex_cli::inspect_env::{run_inspect_env, InspectEnvArgs};
 use codex_tui::Cli as TuiCli;
 use serde::de::Error as SerdeError;
 use std::env;

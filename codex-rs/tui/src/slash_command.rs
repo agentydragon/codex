@@ -30,6 +30,8 @@ pub enum SlashCommand {
     Shell,
     /// Show command execution history.
     ExecHistory,
+    /// Show the effective CLI configuration.
+    Config,
 }
 
 impl SlashCommand {
@@ -49,6 +51,7 @@ impl SlashCommand {
             SlashCommand::Init => "Load the initial prompt into the composer for editing.",
             SlashCommand::Shell => "Run a shell command in the container.",
             SlashCommand::ExecHistory => "Show command execution history with approval status.",
+            SlashCommand::Config => "Print the effective configuration.",
             SlashCommand::Quit => "Exit the application.",
         }
     }
@@ -85,5 +88,10 @@ mod tests {
     fn built_in_includes_init() {
         let commands = built_in_slash_commands();
         assert_eq!(commands.get("init"), Some(&SlashCommand::Init));
+    }
+    #[test]
+    fn built_in_includes_config() {
+        let commands = built_in_slash_commands();
+        assert_eq!(commands.get("config"), Some(&SlashCommand::Config));
     }
 }

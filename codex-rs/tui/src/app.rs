@@ -10,7 +10,6 @@ use crate::scroll_event_helper::ScrollEventHelper;
 use crate::slash_command::SlashCommand;
 use crate::tui;
 use codex_core::config::Config;
-use codex_core::config::ConfigOverrides;
 use codex_core::protocol::Event;
 use codex_core::protocol::EventMsg;
 use codex_core::protocol::Op;
@@ -371,6 +370,17 @@ impl<'a> App<'a> {
                         tx.send(AppEvent::Redraw);
                     });
                 }
+                AppEvent::InlineConfig(_raw) => {
+                    let tx = self.app_event_tx.clone();
+                    let cfg = self.config.clone();
+                    thread::spawn(move || {
+                        let text = format!("{cfg:#?}");
+                        for line in text.lines() {
+                            tx.send(AppEvent::LatestLog(line.to_string()));
+                        }
+                        tx.send(AppEvent::Redraw);
+                    });
+                }
                 AppEvent::MountAdd {
                     host,
                     container,
@@ -385,27 +395,6 @@ impl<'a> App<'a> {
                     if let Err(err) = do_mount_remove(&mut self.config, &container) {
                         tracing::error!("mount-remove failed: {err}");
                     }
-                    self.app_event_tx.send(AppEvent::Redraw);
-                }
-                AppEvent::ConfigReloadRequest(diff) => {
-                    if let AppState::Chat { widget } = &mut self.app_state {
-                        widget.push_config_reload(diff);
-                    }
-                    self.app_event_tx.send(AppEvent::Redraw);
-                }
-                AppEvent::ConfigReloadApply => {
-                    match Config::load_with_cli_overrides(Vec::new(), ConfigOverrides::default()) {
-                        Ok(new_cfg) => {
-                            self.config = new_cfg.clone();
-                            if let AppState::Chat { widget } = &mut self.app_state {
-                                widget.update_config(new_cfg);
-                            }
-                        }
-                        Err(e) => tracing::error!("Failed to reload config.toml: {e}"),
-                    }
-                    self.app_event_tx.send(AppEvent::Redraw);
-                }
-                AppEvent::ConfigReloadIgnore => {
                     self.app_event_tx.send(AppEvent::Redraw);
                 }
                 AppEvent::KeyEvent(key_event) => {
@@ -520,6 +509,13 @@ impl<'a> App<'a> {
                             widget.push_exec_history();
                             self.app_event_tx.send(AppEvent::Redraw);
                         }
+                    }
+                    SlashCommand::Config => {
+                        if let AppState::Chat { widget } = &mut self.app_state {
+                            widget.push_config_view();
+                        }
+                        self.app_event_tx
+                            .send(AppEvent::InlineConfig(String::new()));
                     }
                 },
                 AppEvent::ShellCommand(cmd) => {

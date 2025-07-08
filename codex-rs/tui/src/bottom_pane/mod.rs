@@ -10,6 +10,7 @@ use ratatui::widgets::WidgetRef;
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::user_approval_widget::ApprovalRequest;
+use codex_core::config::Config;
 use codex_core::config_types::Colors;
 
 mod approval_modal_view;
@@ -17,7 +18,7 @@ mod bottom_pane_view;
 mod chat_composer;
 mod chat_composer_history;
 mod command_popup;
-mod config_reload_view;
+mod config_view;
 mod exec_history_view;
 mod inspect_env_view;
 mod mount_view;
@@ -28,7 +29,7 @@ pub(crate) use chat_composer::ChatComposer;
 pub(crate) use chat_composer::InputResult;
 
 use approval_modal_view::ApprovalModalView;
-use config_reload_view::ConfigReloadView;
+use config_view::ConfigView;
 use exec_history_view::ExecHistoryView;
 use inspect_env_view::InspectEnvView;
 use mount_view::MountAddView;
@@ -188,8 +189,9 @@ impl BottomPane<'_> {
     }
 
     /// Launch config reload diff prompt.
-    pub fn push_config_reload(&mut self, diff: String) {
-        let view = ConfigReloadView::new(diff, self.app_event_tx.clone());
+    /// Launch config view to display effective configuration.
+    pub fn push_config_view(&mut self, config: &Config) {
+        let view = ConfigView::new(format!("{config:#?}"));
         self.active_view = Some(Box::new(view));
         self.request_redraw();
     }

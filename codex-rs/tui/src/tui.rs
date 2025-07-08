@@ -21,7 +21,9 @@ pub type Tui = Terminal<CrosstermBackend<Stdout>>;
 
 /// Initialize the terminal
 pub fn init(config: &Config) -> Result<(Tui, MouseCapture)> {
-    execute!(stdout(), EnterAlternateScreen)?;
+    if !config.tui.non_fullscreen_mode {
+        execute!(stdout(), EnterAlternateScreen)?;
+    }
     execute!(stdout(), EnableBracketedPaste)?;
     let mouse_capture = MouseCapture::new_with_capture(!config.tui.disable_mouse_capture)?;
 
@@ -48,7 +50,8 @@ pub fn restore() -> Result<()> {
         // on shutdown, so ignore the error in this case.
     }
     execute!(stdout(), DisableBracketedPaste)?;
-    execute!(stdout(), LeaveAlternateScreen)?;
+    // Always attempt to leave alternate screen, ignoring errors if not active
+    let _ = execute!(stdout(), LeaveAlternateScreen);
     disable_raw_mode()?;
     Ok(())
 }

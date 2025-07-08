@@ -15,6 +15,7 @@
     clippy::print_stderr
 )]
 
+mod api_logger;
 mod chat_completions;
 mod client;
 mod client_common;
