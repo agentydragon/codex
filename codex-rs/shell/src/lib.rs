@@ -9,15 +9,18 @@ use codex_core::config::ConfigOverrides;
 use codex_core::hooks::HookManager;
 use codex_core::hooks::HookResponse;
 use codex_core::protocol::Event;
+use codex_core::protocol::InputItem;
+use codex_core::protocol::Op;
 use crossterm::cursor::MoveToColumn;
-use crossterm::cursor::RestorePosition;
-use crossterm::cursor::SavePosition;
 use crossterm::queue;
 use crossterm::terminal::Clear;
 use crossterm::terminal::ClearType;
+use std::env;
 use std::io::Write;
 use std::io::{self};
 use std::sync::Arc;
+use tokio::io::AsyncBufReadExt;
+use tokio::io::BufReader;
 use tokio::sync::Mutex;
 
 /// Unified event type for model and hook responses.
@@ -26,26 +29,37 @@ use tokio::sync::Mutex;
 enum ShellEvent {
     Codex(Event),
     Hook(HookResponse),
+    /// user-typed line (without trailing newline)
+    Input(String),
 }
 
 /// Print a single event inline (append-only).
 fn render_event(evt: &ShellEvent) {
     // TODO: format events with ANSI styling
-    // render event in blue text for visibility
-    println!("\x1b[34m{evt:?}\x1b[0m");
+    match evt {
+        ShellEvent::Codex(ev) => {
+            println!(
+                "\x1b[34m[codex:{id}] {msg:?}\x1b[0m",
+                id = ev.id,
+                msg = ev.msg
+            );
+        }
+        ShellEvent::Hook(resp) => {
+            println!("\x1b[34m[hook] {resp:?}\x1b[0m");
+        }
+        ShellEvent::Input(line) => {
+            println!("\x1b[32m> {line}\x1b[0m");
+        }
+    }
 }
 
-/// Redraw the prompt line in place after an event.
+/// Redraw the prompt showing cwd and '> '
 fn redraw_prompt() {
+    let cwd = env::current_dir().unwrap_or_default();
+    let cwd_display = cwd.display();
     let mut out = io::stdout();
-    let _ = queue!(
-        out,
-        SavePosition,
-        MoveToColumn(0),
-        Clear(ClearType::CurrentLine)
-    );
-    let _ = write!(out, "> ");
-    let _ = queue!(out, RestorePosition);
+    let _ = queue!(out, MoveToColumn(0), Clear(ClearType::CurrentLine));
+    let _ = write!(out, "{cwd_display} > ");
     let _ = out.flush();
 }
 
@@ -94,6 +108,7 @@ pub async fn run_main(cli: Cli, _sandbox_exe: Option<std::path::PathBuf>) -> Res
     // Initialize Codex client and display session start
     let (codex, session_event, ctrl_c) =
         codex_core::codex_wrapper::init_codex(config.clone()).await?;
+    let codex = Arc::new(codex);
     // unify model and hook events into a single channel
     let (evt_tx, mut evt_rx) = tokio::sync::mpsc::unbounded_channel::<ShellEvent>();
     // spawn hook processes and read their responses
@@ -111,10 +126,36 @@ pub async fn run_main(cli: Cli, _sandbox_exe: Option<std::path::PathBuf>) -> Res
     }
     // broadcast initial session event
     let _ = evt_tx.send(ShellEvent::Codex(session_event.clone()));
+    // spawn Op submission task
+    let (op_tx, mut op_rx) = tokio::sync::mpsc::unbounded_channel::<Op>();
+    {
+        let codex = Arc::clone(&codex);
+        tokio::spawn(async move {
+            while let Some(op) = op_rx.recv().await {
+                let _ = codex.submit(op).await;
+            }
+        });
+    }
+    // spawn user-input reader: echo & send
+    {
+        let evt_tx = evt_tx.clone();
+        let op_tx = op_tx.clone();
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(tokio::io::stdin()).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = evt_tx.send(ShellEvent::Input(line.clone()));
+                if !line.is_empty() {
+                    let items = vec![InputItem::Text { text: line }];
+                    let _ = op_tx.send(Op::UserInput { items });
+                }
+            }
+        });
+    }
     // spawn model event producer: forward to hooks then to channel
     {
         let hook_mgr = Arc::clone(&hook_mgr);
         let evt_tx = evt_tx.clone();
+        let codex = Arc::clone(&codex);
         tokio::spawn(async move {
             while let Ok(e) = codex.next_event().await {
                 let mut mgr = hook_mgr.lock().await;
