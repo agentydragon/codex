@@ -9,6 +9,12 @@ use codex_core::config::ConfigOverrides;
 use codex_core::hooks::HookManager;
 use codex_core::hooks::HookResponse;
 use codex_core::protocol::Event;
+use crossterm::cursor::MoveToColumn;
+use crossterm::cursor::RestorePosition;
+use crossterm::cursor::SavePosition;
+use crossterm::queue;
+use crossterm::terminal::Clear;
+use crossterm::terminal::ClearType;
 use std::io::Write;
 use std::io::{self};
 use std::sync::Arc;
@@ -30,9 +36,16 @@ fn render_event(evt: &ShellEvent) {
 
 /// Redraw the prompt line in place after an event.
 fn redraw_prompt() {
-    // TODO: reposition cursor and clear prompt lines via ANSI
-    print!("> ");
-    let _ = io::stdout().flush();
+    let mut out = io::stdout();
+    let _ = queue!(
+        out,
+        SavePosition,
+        MoveToColumn(0),
+        Clear(ClearType::CurrentLine)
+    );
+    let _ = write!(out, "> ");
+    let _ = queue!(out, RestorePosition);
+    let _ = out.flush();
 }
 
 /// CLI options for codex-shell

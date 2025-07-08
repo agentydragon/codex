@@ -22,3 +22,4 @@ codex-core = { path = "../core" }
 codex-linux-sandbox = { path = "../linux-sandbox" }
 uuid = { version = "1", features = ["v4"] }
 tokio = { version = "1", features = ["macros", "signal", "rt-multi-thread"] }
+crossterm = "0.26"
