@@ -31,7 +31,8 @@ enum ShellEvent {
 /// Print a single event inline (append-only).
 fn render_event(evt: &ShellEvent) {
     // TODO: format events with ANSI styling
-    println!("{evt:?}");
+    // render event in blue text for visibility
+    println!("\x1b[34m{evt:?}\x1b[0m");
 }
 
 /// Redraw the prompt line in place after an event.
