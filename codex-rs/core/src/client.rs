@@ -111,24 +111,25 @@ impl ModelClient {
         }
     }
 
+    /// Return an outstanding function call ID if the history contains a call without matching output.
+    fn detect_unanswered_function_call(history: &[ResponseItem]) -> Option<String> {
+        let mut call = None;
+        for it in history {
+            match it {
+                ResponseItem::FunctionCall { call_id, .. } => call = Some(call_id.clone()),
+                ResponseItem::FunctionCallOutput { call_id, .. }
+                    if call.as_ref() == Some(call_id) =>
+                {
+                    call = None
+                }
+                _ => {}
+            }
+        }
+        call
+    }
+
     /// Implementation for the OpenAI *Responses* experimental API.
     async fn stream_responses(&self, prompt: &Prompt) -> Result<ResponseStream> {
-        // If a tool call was requested but never answered, supply a cancellation output
-        fn detect_unanswered_function_call(history: &[ResponseItem]) -> Option<String> {
-            let mut call = None;
-            for it in history {
-                match it {
-                    ResponseItem::FunctionCall { call_id, .. } => call = Some(call_id.clone()),
-                    ResponseItem::FunctionCallOutput { call_id, .. }
-                        if call.as_ref() == Some(call_id) =>
-                    {
-                        call = None
-                    }
-                    _ => {}
-                }
-            }
-            call
-        }
         if let Some(path) = &*CODEX_RS_SSE_FIXTURE {
             // short circuit for tests
             warn!(path, "Streaming from fixture");
@@ -140,7 +141,7 @@ impl ModelClient {
         let reasoning = create_reasoning_param_for_request(&self.model, self.effort, self.summary);
         // if model requested a tool call previously without a matching output, inject cancel
         let mut input_items = prompt.input.clone();
-        if let Some(call_id) = detect_unanswered_function_call(&input_items) {
+        if let Some(call_id) = Self::detect_unanswered_function_call(&input_items) {
             input_items.push(ResponseItem::FunctionCallOutput {
                 call_id: call_id.clone(),
                 output: FunctionCallOutputPayload {
@@ -441,4 +442,43 @@ async fn stream_from_fixture(path: impl AsRef<Path>) -> Result<ResponseStream> {
     let stream = ReaderStream::new(rdr).map_err(CodexErr::Io);
     tokio::spawn(process_sse(stream, tx_event, None, String::new()));
     Ok(ResponseStream { rx_event })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::FunctionCallOutputPayload;
+
+    #[test]
+    fn test_detect_unanswered_function_call() {
+        let call_id = "call123".to_string();
+        let history = vec![ResponseItem::FunctionCall {
+            name: "foo".into(),
+            arguments: "{}".into(),
+            call_id: call_id.clone(),
+        }];
+        assert_eq!(
+            ModelClient::detect_unanswered_function_call(&history),
+            Some(call_id.clone())
+        );
+
+        let history2 = vec![
+            ResponseItem::FunctionCall {
+                name: "foo".into(),
+                arguments: "{}".into(),
+                call_id: call_id.clone(),
+            },
+            ResponseItem::FunctionCallOutput {
+                call_id: call_id.clone(),
+                output: FunctionCallOutputPayload {
+                    content: "".into(),
+                    success: None,
+                },
+            },
+        ];
+        assert_eq!(
+            ModelClient::detect_unanswered_function_call(&history2),
+            None
+        );
+    }
 }
