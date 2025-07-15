@@ -138,6 +138,8 @@ pub(crate) async fn stream_chat_completions(
             messages.push(msg);
         }
     }
+    // Validate tool call sequence
+    crate::validation::validate_chat_message_sequence(&messages, api_logger).await;
 
     let tools_json = create_tools_json_for_chat_completions_api(prompt, model)?;
     let payload = json!({

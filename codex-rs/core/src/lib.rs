@@ -51,6 +51,7 @@ mod rollout;
 mod safety;
 mod user_notification;
 pub mod util;
+mod validation;
 
 pub use client_common::Prompt;
 pub use client_common::model_supports_reasoning_summaries;

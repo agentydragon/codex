@@ -8,7 +8,7 @@ use futures::prelude::*;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{Value, json};
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 use tokio_util::io::ReaderStream;
@@ -133,7 +133,11 @@ impl ModelClient {
             store: prompt.store,
             stream: true,
         };
-
+        // Validate tool call sequence in prompt input
+        crate::validation::validate_response_input_sequence(
+            &prompt.input,
+            self.api_logger.as_ref(),
+        ).await;
         let base_url = self.provider.base_url.clone();
         let base_url = base_url.trim_end_matches('/');
         let url = format!("{}/responses", base_url);
