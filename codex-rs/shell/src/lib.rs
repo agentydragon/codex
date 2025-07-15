@@ -1,6 +1,7 @@
 //! codex-shell: lightweight inline shell mode for codex-rs
 
 use anyhow::Result;
+use tokio::io::AsyncBufReadExt;
 use clap::Parser;
 use codex_core::config::Config;
 use codex_core::config::ConfigOverrides;
@@ -50,25 +51,39 @@ pub async fn run_main(cli: Cli, _sandbox_exe: Option<std::path::PathBuf>) -> Res
     // Initialize Codex client and display session start
     let (codex, session_event, ctrl_c) =
         codex_core::codex_wrapper::init_codex(config.clone()).await?;
-    // unify model and hook events into a single channel
-    let (evt_tx, mut evt_rx) = tokio::sync::mpsc::unbounded_channel();
-    // send initial session event
-    let _ = evt_tx.send(session_event);
-    // spawn model event producer
-    tokio::spawn(async move {
-        while let Ok(e) = codex.next_event().await {
-            let _ = evt_tx.send(e);
-        }
-    });
-    // TODO: spawn hook event producers and forward into evt_tx
+    // print initial session event
+    println!("{session_event:?}");
 
-    // Event loop: print each incoming unified event
+    // spawn stdin reader: lines sent into input_rx
+    let (input_tx, mut input_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+    {
+        // read lines from stdin asynchronously
+        let input_tx = input_tx.clone();
+        tokio::spawn(async move {
+            let stdin = tokio::io::stdin();
+            let mut reader = tokio::io::BufReader::new(stdin).lines();
+            while let Ok(Some(line)) = reader.next_line().await {
+                if input_tx.send(line).is_err() {
+                    break;
+                }
+            }
+        });
+    }
+    // Event loop: handle Ctrl-C, Codex events, or user input
     loop {
         tokio::select! {
+            // exit on Ctrl-C
             _ = ctrl_c.notified() => break,
-            maybe = evt_rx.recv() => match maybe {
-                Some(e) => println!("{e:?}"),
-                None => break,
+            // next event from Codex
+            res = codex.next_event() => match res {
+                Ok(e) => println!("{e:?}"),
+                Err(_) => break,
+            },
+            // user input from stdin
+            Some(line) = input_rx.recv() => {
+                let items = vec![codex_core::protocol::InputItem::Text { text: line }];
+                // submit user input to Codex
+                let _ = codex.submit(codex_core::protocol::Op::UserInput { items }).await?;
             }
         }
     }
