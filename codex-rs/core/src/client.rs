@@ -35,6 +35,7 @@ use crate::flags::OPENAI_REQUEST_MAX_RETRIES;
 use crate::flags::OPENAI_STREAM_IDLE_TIMEOUT_MS;
 use crate::model_provider_info::ModelProviderInfo;
 use crate::model_provider_info::WireApi;
+use crate::models::FunctionCallOutputPayload;
 use crate::models::ResponseItem;
 use crate::openai_tools::create_tools_json_for_responses_api;
 use crate::util::backoff;
@@ -112,6 +113,22 @@ impl ModelClient {
 
     /// Implementation for the OpenAI *Responses* experimental API.
     async fn stream_responses(&self, prompt: &Prompt) -> Result<ResponseStream> {
+        // If a tool call was requested but never answered, supply a cancellation output
+        fn detect_unanswered_function_call(history: &[ResponseItem]) -> Option<String> {
+            let mut call = None;
+            for it in history {
+                match it {
+                    ResponseItem::FunctionCall { call_id, .. } => call = Some(call_id.clone()),
+                    ResponseItem::FunctionCallOutput { call_id, .. }
+                        if call.as_ref() == Some(call_id) =>
+                    {
+                        call = None
+                    }
+                    _ => {}
+                }
+            }
+            call
+        }
         if let Some(path) = &*CODEX_RS_SSE_FIXTURE {
             // short circuit for tests
             warn!(path, "Streaming from fixture");
@@ -121,10 +138,21 @@ impl ModelClient {
         let full_instructions = prompt.get_full_instructions(&self.model);
         let tools_json = create_tools_json_for_responses_api(prompt, &self.model)?;
         let reasoning = create_reasoning_param_for_request(&self.model, self.effort, self.summary);
+        // if model requested a tool call previously without a matching output, inject cancel
+        let mut input_items = prompt.input.clone();
+        if let Some(call_id) = detect_unanswered_function_call(&input_items) {
+            input_items.push(ResponseItem::FunctionCallOutput {
+                call_id: call_id.clone(),
+                output: FunctionCallOutputPayload {
+                    content: "User did not approve this tool call".into(),
+                    success: Some(false),
+                },
+            });
+        }
         let payload = ResponsesApiRequest {
             model: &self.model,
             instructions: &full_instructions,
-            input: &prompt.input,
+            input: &input_items,
             tools: &tools_json,
             tool_choice: "auto",
             parallel_tool_calls: false,
