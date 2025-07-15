@@ -2,8 +2,6 @@
 //! draft-buffer stub for input capture (step 2)
 
 use anyhow::Result;
-use std::io::{self, Write};
-use tokio::io::AsyncBufReadExt;
 use clap::Parser;
 use codex_core::config::Config;
 use codex_core::config::ConfigOverrides;
@@ -35,6 +33,7 @@ enum ShellEvent {
 }
 
 /// Print a single event inline (append-only).
+#[allow(dead_code)]
 fn render_event(evt: &ShellEvent) {
     // inline history entries with aligned labels
     const LABEL_WIDTH: usize = 6; // width of longest label, e.g. "codex:"
@@ -80,6 +79,7 @@ fn render_event(evt: &ShellEvent) {
 }
 
 /// Redraw the prompt showing cwd and '> '
+#[allow(dead_code)]
 fn redraw_prompt() {
     let cwd = env::current_dir().unwrap_or_default();
     let cwd_display = cwd.display();
@@ -136,7 +136,7 @@ pub async fn run_main(cli: Cli, _sandbox_exe: Option<std::path::PathBuf>) -> Res
         codex_core::codex_wrapper::init_codex(config.clone()).await?;
     let codex = Arc::new(codex);
     // unify model and hook events into a single channel
-    let (evt_tx, mut evt_rx) = tokio::sync::mpsc::unbounded_channel::<ShellEvent>();
+    let (evt_tx, _evt_rx) = tokio::sync::mpsc::unbounded_channel::<ShellEvent>();
     // spawn hook processes and read their responses
     let hook_mgr = Arc::new(Mutex::new(HookManager::new(&config.hooks, session_id)));
     {
@@ -232,7 +232,7 @@ pub async fn run_main(cli: Cli, _sandbox_exe: Option<std::path::PathBuf>) -> Res
                                 ).await?;
                             }
                         }
-                        codex_core::protocol::EventMsg::ApplyPatchApprovalRequest(req) => {
+                        codex_core::protocol::EventMsg::ApplyPatchApprovalRequest(_req) => {
                             println!("Patch approval request");
                             print!("Approve patch? [1=approve, 2=approve-session, 3=abort, Enter=deny]: "); io::stdout().flush()?;
                             if let Some(ans) = input_rx.recv().await {

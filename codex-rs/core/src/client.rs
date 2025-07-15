@@ -8,7 +8,7 @@ use futures::prelude::*;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::{Value, json};
+use serde_json::Value;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 use tokio_util::io::ReaderStream;
@@ -137,7 +137,8 @@ impl ModelClient {
         crate::validation::validate_response_input_sequence(
             &prompt.input,
             self.api_logger.as_ref(),
-        ).await;
+        )
+        .await;
         let base_url = self.provider.base_url.clone();
         let base_url = base_url.trim_end_matches('/');
         let url = format!("{}/responses", base_url);
@@ -180,7 +181,12 @@ impl ModelClient {
 
                     // spawn task to process SSE
                     let stream = resp.bytes_stream().map_err(CodexErr::Reqwest);
-                    tokio::spawn(process_sse(stream, tx_event));
+                    tokio::spawn(process_sse(
+                        stream,
+                        tx_event,
+                        self.api_logger.clone(),
+                        req_id.clone(),
+                    ));
 
                     return Ok(ResponseStream { rx_event });
                 }
@@ -259,8 +265,12 @@ struct ResponseCompleted {
     id: String,
 }
 
-async fn process_sse<S>(stream: S, tx_event: mpsc::Sender<Result<ResponseEvent>>)
-where
+async fn process_sse<S>(
+    stream: S,
+    tx_event: mpsc::Sender<Result<ResponseEvent>>,
+    api_logger: Option<ApiLogger>,
+    req_id: String,
+) where
     S: Stream<Item = Result<Bytes>> + Unpin,
 {
     let mut stream = stream.eventsource();
@@ -302,7 +312,18 @@ where
                 return;
             }
         };
-
+        // log raw SSE chunk before processing
+        if let Some(logger) = &api_logger {
+            let data_val: serde_json::Value = serde_json::from_str(&sse.data)
+                .unwrap_or_else(|_| serde_json::Value::String(sse.data.clone()));
+            let entry = serde_json::json!({
+                "ts": OffsetDateTime::now_utc().format(TS_FORMAT).unwrap_or_default(),
+                "type": "response",
+                "req_id": req_id,
+                "data": data_val,
+            });
+            let _ = logger.log(&entry).await;
+        }
         let event: SseEvent = match serde_json::from_str(&sse.data) {
             Ok(event) => event,
             Err(e) => {
@@ -390,6 +411,6 @@ async fn stream_from_fixture(path: impl AsRef<Path>) -> Result<ResponseStream> {
 
     let rdr = std::io::Cursor::new(content);
     let stream = ReaderStream::new(rdr).map_err(CodexErr::Io);
-    tokio::spawn(process_sse(stream, tx_event));
+    tokio::spawn(process_sse(stream, tx_event, None, String::new()));
     Ok(ResponseStream { rx_event })
 }
