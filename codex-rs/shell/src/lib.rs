@@ -1,6 +1,7 @@
 //! codex-shell: lightweight inline shell mode for codex-rs
 
 use anyhow::Result;
+use std::io::{self, Write};
 use tokio::io::AsyncBufReadExt;
 use clap::Parser;
 use codex_core::config::Config;
@@ -76,7 +77,46 @@ pub async fn run_main(cli: Cli, _sandbox_exe: Option<std::path::PathBuf>) -> Res
             _ = ctrl_c.notified() => break,
             // next event from Codex
             res = codex.next_event() => match res {
-                Ok(e) => println!("{e:?}"),
+                Ok(e) => {
+                    // handle approval requests specially
+                    let id = e.id.clone();
+                    match e.msg {
+                        codex_core::protocol::EventMsg::ExecApprovalRequest(req) => {
+                            println!("Command approval request: {:?}", req.command);
+                            print!("Approve? [1=approve, 2=approve-session, 3=abort, Enter=deny]: "); io::stdout().flush()?;
+                            if let Some(ans) = input_rx.recv().await {
+                                let dec = match ans.trim() {
+                                    "1" => codex_core::protocol::ReviewDecision::Approved,
+                                    "2" => codex_core::protocol::ReviewDecision::ApprovedForSession,
+                                    "3" => codex_core::protocol::ReviewDecision::Abort,
+                                    _ => codex_core::protocol::ReviewDecision::Denied,
+                                };
+                                let _ = codex.submit(
+                                    codex_core::protocol::Op::ExecApproval { id, decision: dec }
+                                ).await?;
+                            }
+                        }
+                        codex_core::protocol::EventMsg::ApplyPatchApprovalRequest(req) => {
+                            println!("Patch approval request");
+                            print!("Approve patch? [1=approve, 2=approve-session, 3=abort, Enter=deny]: "); io::stdout().flush()?;
+                            if let Some(ans) = input_rx.recv().await {
+                                let dec = match ans.trim() {
+                                    "1" => codex_core::protocol::ReviewDecision::Approved,
+                                    "2" => codex_core::protocol::ReviewDecision::ApprovedForSession,
+                                    "3" => codex_core::protocol::ReviewDecision::Abort,
+                                    _ => codex_core::protocol::ReviewDecision::Denied,
+                                };
+                                let _ = codex.submit(
+                                    codex_core::protocol::Op::PatchApproval { id, decision: dec }
+                                ).await?;
+                            }
+                        }
+                        other => {
+                            // print other events
+                            println!("{:?}", codex_core::protocol::Event { id, msg: other });
+                        }
+                    }
+                }
                 Err(_) => break,
             },
             // user input from stdin
