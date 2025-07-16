@@ -20,9 +20,11 @@ fn seatbelt_debug_deny_logs() {
         .args(["-p", policy, "--", "sh", "-c", "echo hi > denied.txt"])
         .output()
         .unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined = format!("{stdout}{stderr}");
     assert!(
-        stderr.contains("sandbox_apply: Operation not permitted"),
-        "Expected sandbox_apply failure, got stderr: {stderr}"
+        combined.contains("sandbox_apply: Operation not permitted"),
+        "Expected sandbox_apply failure, got output: {combined}"
     );
 }
