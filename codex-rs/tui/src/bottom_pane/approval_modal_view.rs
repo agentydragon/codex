@@ -17,22 +17,22 @@ pub(crate) struct ApprovalModalView<'a> {
     current: UserApprovalWidget<'a>,
     queue: Vec<ApprovalRequest>,
     app_event_tx: AppEventSender,
-    /// Color settings for TUI elements.
-    colors: codex_core::config_types::Colors,
+    /// Style settings for TUI elements.
+    styles: codex_core::config_types::Styles,
 }
 
 impl ApprovalModalView<'_> {
     pub fn new(
         request: ApprovalRequest,
         app_event_tx: AppEventSender,
-        colors: codex_core::config_types::Colors,
+        styles: codex_core::config_types::Styles,
     ) -> Self {
         debug!("UI: enqueue approval request: {:?}", request);
         Self {
-            current: UserApprovalWidget::new(request, app_event_tx.clone(), colors.clone()),
+            current: UserApprovalWidget::new(request, app_event_tx.clone(), styles.clone()),
             queue: Vec::new(),
             app_event_tx,
-            colors,
+            styles,
         }
     }
 
@@ -47,7 +47,7 @@ impl ApprovalModalView<'_> {
         {
             debug!("UI: advancing to next approval request: {:?}", next);
             self.current =
-                UserApprovalWidget::new(next, self.app_event_tx.clone(), self.colors.clone());
+                UserApprovalWidget::new(next, self.app_event_tx.clone(), self.styles.clone());
         }
     }
 }

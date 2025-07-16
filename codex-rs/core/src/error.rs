@@ -12,6 +12,12 @@ pub enum SandboxErr {
     #[error("sandbox denied exec error, exit code: {0}, stdout: {1}, stderr: {2}")]
     Denied(i32, String, String),
 
+    /// Error from sandbox execution with syscall blocking detected
+    #[error(
+        "sandbox blocked syscalls, exit code: {0}, blocked syscalls: {1:?}, stdout: {2}, stderr: {3}"
+    )]
+    SyscallsBlocked(i32, Vec<String>, String, String),
+
     /// Error from linux seccomp filter setup
     #[cfg(target_os = "linux")]
     #[error("seccomp setup error")]
@@ -61,6 +67,10 @@ pub enum CodexErr {
     /// Unexpected HTTP status code.
     #[error("unexpected status {0}: {1}")]
     UnexpectedStatus(StatusCode, String),
+
+    /// Model requested a tool call that was not answered before next user input.
+    #[error("unanswered function call: {0}")]
+    UnansweredFunctionCall(String),
 
     /// Retry limit exceeded.
     #[error("exceeded retry limit, last status: {0}")]
@@ -127,12 +137,63 @@ impl std::fmt::Display for EnvVarError {
     }
 }
 
+impl SandboxErr {
+    /// Returns true if this error represents syscalls being blocked by the sandbox
+    pub fn has_blocked_syscalls(&self) -> bool {
+        matches!(self, SandboxErr::SyscallsBlocked(_, _, _, _))
+    }
+
+    /// Returns the list of blocked syscalls if available
+    pub fn blocked_syscalls(&self) -> Option<&Vec<String>> {
+        match self {
+            SandboxErr::SyscallsBlocked(_, blocked, _, _) => Some(blocked),
+            _ => None,
+        }
+    }
+
+    /// Returns true if this error suggests the command might succeed outside the sandbox
+    pub fn should_retry_outside_sandbox(&self) -> bool {
+        match self {
+            SandboxErr::SyscallsBlocked(_, _, _, _) => true,
+            SandboxErr::Denied(_, _, _) => true, // Conservative: allow retry for any denial
+            SandboxErr::Timeout | SandboxErr::Signal(_) => false, // These aren't sandbox blocking issues
+            SandboxErr::LandlockRestrict => false, // Landlock setup issue, not syscall blocking
+            #[cfg(target_os = "linux")]
+            SandboxErr::SeccompInstall(_) | SandboxErr::SeccompBackend(_) => false,
+        }
+    }
+}
+
 impl CodexErr {
     /// Minimal shim so that existing `e.downcast_ref::<CodexErr>()` checks continue to compile
     /// after replacing `anyhow::Error` in the return signature. This mirrors the behavior of
     /// `anyhow::Error::downcast_ref` but works directly on our concrete enum.
     pub fn downcast_ref<T: std::any::Any>(&self) -> Option<&T> {
         (self as &dyn std::any::Any).downcast_ref::<T>()
+    }
+
+    /// Returns true if this is a sandbox error with blocked syscalls
+    pub fn has_blocked_syscalls(&self) -> bool {
+        match self {
+            CodexErr::Sandbox(sandbox_err) => sandbox_err.has_blocked_syscalls(),
+            _ => false,
+        }
+    }
+
+    /// Returns the list of blocked syscalls if this is a sandbox error with syscall blocking
+    pub fn blocked_syscalls(&self) -> Option<&Vec<String>> {
+        match self {
+            CodexErr::Sandbox(sandbox_err) => sandbox_err.blocked_syscalls(),
+            _ => None,
+        }
+    }
+
+    /// Returns true if this error suggests the command might succeed outside the sandbox
+    pub fn should_retry_outside_sandbox(&self) -> bool {
+        match self {
+            CodexErr::Sandbox(sandbox_err) => sandbox_err.should_retry_outside_sandbox(),
+            _ => false,
+        }
     }
 }
 

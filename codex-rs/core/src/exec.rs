@@ -39,6 +39,64 @@ const TIMEOUT_CODE: i32 = 64;
 
 const MACOS_SEATBELT_BASE_POLICY: &str = include_str!("seatbelt_base_policy.sbpl");
 
+/// Parse sandbox blocking indicators from stderr to extract blocked operations
+///
+/// Modern macOS seatbelt doesn't output debug deny logs to stderr, but we can
+/// extract useful information from the error messages that are available.
+fn parse_seatbelt_deny_logs(stderr: &str) -> Vec<String> {
+    let mut blocked_operations = Vec::new();
+
+    for line in stderr.lines() {
+        let line = line.trim();
+
+        // Pattern: "sh: /path/to/file: Operation not permitted"
+        if line.contains("Operation not permitted") {
+            if let Some(colon_pos) = line.rfind(": Operation not permitted") {
+                let before_error = &line[..colon_pos];
+                if let Some(second_colon) = before_error.rfind(':') {
+                    let file_path = before_error[second_colon + 1..].trim();
+                    blocked_operations.push(format!("file-write {}", file_path));
+                } else {
+                    blocked_operations.push("file-write (path unknown)".to_string());
+                }
+            }
+        }
+        // Pattern: "sandbox-exec: execvp() of 'command' failed: No such file or directory"
+        else if line.contains("execvp() of") && line.contains("failed: No such file or directory")
+        {
+            const PREFIX: &str = "execvp() of '";
+            const SUFFIX: &str = "' failed";
+            if let Some(start) = line.find(PREFIX) {
+                let after_prefix = start + PREFIX.len();
+                if let Some(end) = line[after_prefix..].find(SUFFIX) {
+                    let command = &line[after_prefix..after_prefix + end];
+                    blocked_operations.push(format!("process-exec {}", command));
+                }
+            }
+        }
+        // Pattern: "Permission denied"
+        else if line.contains("Permission denied") {
+            blocked_operations.push("syscall blocked (Permission denied)".to_string());
+        }
+        // Classic seatbelt debug deny logs (if they ever appear)
+        else if line.contains("deny")
+            && (line.contains("file-")
+                || line.contains("network")
+                || line.contains("process-")
+                || line.contains("sysctl-"))
+        {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 && parts[0] == "deny" {
+                blocked_operations.push(parts[1..].join(" "));
+            } else {
+                blocked_operations.push(line.to_string());
+            }
+        }
+    }
+
+    blocked_operations
+}
+
 /// When working with `sandbox-exec`, only consider `sandbox-exec` in `/usr/bin`
 /// to defend against an attacker trying to inject a malicious version on the
 /// PATH. If /usr/bin/sandbox-exec has been tampered with, then the attacker
@@ -152,6 +210,19 @@ pub async fn process_exec_tool_call(
             // been a sandboxing error and allow the user to retry. (The user of course may choose
             // not to retry, or in a non-interactive mode, would automatically reject the approval.)
             if exit_code != 0 && sandbox_type != SandboxType::None {
+                // Check if this is a macOS seatbelt sandbox failure with syscall blocking
+                if sandbox_type == SandboxType::MacosSeatbelt {
+                    let blocked_syscalls = parse_seatbelt_deny_logs(&stderr);
+                    if !blocked_syscalls.is_empty() {
+                        return Err(CodexErr::Sandbox(SandboxErr::SyscallsBlocked(
+                            exit_code,
+                            blocked_syscalls,
+                            stdout,
+                            stderr,
+                        )));
+                    }
+                }
+
                 return Err(CodexErr::Sandbox(SandboxErr::Denied(
                     exit_code, stdout, stderr,
                 )));

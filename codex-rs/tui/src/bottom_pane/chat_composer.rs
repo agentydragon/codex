@@ -2,7 +2,6 @@ use crossterm::event::KeyEvent;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Alignment;
 use ratatui::layout::Rect;
-use ratatui::style::Color;
 use ratatui::style::Style;
 use ratatui::style::Stylize;
 use ratatui::text::Line;
@@ -20,6 +19,8 @@ use super::command_popup::CommandPopup;
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::slash_command::SlashCommand;
+use crate::style::parse_style;
+use codex_core::config_types::Styles;
 
 /// Contents of the init prompt loaded by the `/init` slash command.
 const INIT_PROMPT: &str = include_str!("../../../core/init.md");
@@ -47,6 +48,8 @@ pub(crate) struct ChatComposer<'a> {
     context_left_percent: f64,
     /// Whether the composer is in shell-command mode (Ctrl+M toggles).
     shell_mode: bool,
+    /// TUI style configuration
+    styles: Styles,
 }
 
 #[cfg(test)]
@@ -69,7 +72,7 @@ mod tests {
     fn ctrl_m_dispatches_shell_command() {
         let (tx, rx) = mpsc::channel();
         let evt_tx = AppEventSender::new(tx);
-        let mut composer = ChatComposer::new(true, evt_tx.clone(), 1);
+        let mut composer = ChatComposer::new(true, evt_tx.clone(), 1, Styles::default());
         // Initial shell_mode should be false.
         assert!(!composer.shell_mode);
         // Simulate Ctrl+M key event.
@@ -90,7 +93,7 @@ mod tests {
     fn init_command_injects_init_prompt() {
         let (tx, _rx) = mpsc::channel();
         let evt_tx = AppEventSender::new(tx);
-        let mut composer = ChatComposer::new(true, evt_tx.clone(), 5);
+        let mut composer = ChatComposer::new(true, evt_tx.clone(), 5, Styles::default());
         // Simulate typing "/init"
         for ch in "/init".chars() {
             let key_event = KeyEvent::new(KeyCode::Char(ch), KeyModifiers::empty());
@@ -116,7 +119,12 @@ mod tests {
 }
 
 impl ChatComposer<'_> {
-    pub fn new(has_input_focus: bool, app_event_tx: AppEventSender, max_rows: usize) -> Self {
+    pub fn new(
+        has_input_focus: bool,
+        app_event_tx: AppEventSender,
+        max_rows: usize,
+        styles: Styles,
+    ) -> Self {
         let mut textarea = TextArea::default();
         textarea.set_placeholder_text("send a message");
         textarea.set_cursor_line_style(ratatui::style::Style::default());
@@ -129,6 +137,7 @@ impl ChatComposer<'_> {
             max_rows,
             context_left_percent: 100.0,
             shell_mode: false,
+            styles,
         };
         this.update_border(has_input_focus);
         this
@@ -456,7 +465,7 @@ impl ChatComposer<'_> {
             BlockState {
                 right_title: Line::from("Shell mode – Enter to run | Ctrl+M to exit shell mode")
                     .alignment(Alignment::Right),
-                border_style: Style::default().fg(Color::Red),
+                border_style: parse_style(&self.styles.composer_error_border),
             }
         } else if has_focus {
             BlockState {
@@ -515,19 +524,14 @@ impl WidgetRef for &ChatComposer<'_> {
         if self.command_popup.is_none() {
             let pct = self.context_left_percent.round();
             let text = format!("{pct:.0}% context left");
-            let color = if pct > 40.0 {
-                Color::Green
+            let style = if pct > 40.0 {
+                parse_style(&self.styles.context_high)
             } else if pct > 25.0 {
-                Color::Yellow
+                parse_style(&self.styles.context_medium)
             } else {
-                Color::Red
+                parse_style(&self.styles.context_low)
             };
-            buf.set_string(
-                area.x + 1,
-                area.y + area.height - 1,
-                text,
-                Style::default().fg(color),
-            );
+            buf.set_string(area.x + 1, area.y + area.height - 1, text, style);
         }
     }
 }

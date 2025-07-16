@@ -7,6 +7,9 @@ use std::path::Path;
 
 use crate::citation_regex::CITATION_REGEX;
 
+#[cfg(feature = "custom-markdown")]
+use crate::custom_markdown;
+
 pub(crate) fn append_markdown(
     markdown_source: &str,
     lines: &mut Vec<Line<'static>>,
@@ -18,6 +21,8 @@ pub(crate) fn append_markdown(
         &mut new_lines,
         config.file_opener,
         &config.cwd,
+        #[cfg(feature = "custom-markdown")]
+        &config.tui.styles,
     );
     if config.tui.markdown_compact {
         for line in collapse_heading_blank_lines(new_lines) {
@@ -33,36 +38,67 @@ fn append_markdown_with_opener_and_cwd(
     lines: &mut Vec<Line<'static>>,
     file_opener: UriBasedFileOpener,
     cwd: &Path,
+    #[cfg(feature = "custom-markdown")]
+    styles: &codex_core::config_types::Styles,
 ) {
     // Perform citation rewrite *before* feeding the string to the markdown
     // renderer. When `file_opener` is absent we bypass the transformation to
     // avoid unnecessary allocations.
     let processed_markdown = rewrite_file_citations(markdown_source, file_opener, cwd);
 
-    let markdown = tui_markdown::from_str(&processed_markdown);
+    // Workaround for tui-markdown not handling code blocks that start at the very beginning.
+    // If the content starts with a code fence, prepend a blank line to ensure proper parsing.
+    let markdown_with_workaround = if processed_markdown.trim_start().starts_with("```") {
+        format!("\n{processed_markdown}")
+    } else {
+        processed_markdown.into_owned()
+    };
 
-    // `tui_markdown` returns a `ratatui::text::Text` where every `Line` borrows
-    // from the input `message` string. Since the `HistoryCell` stores its lines
-    // with a `'static` lifetime we must create an **owned** copy of each line
-    // so that it is no longer tied to `message`. We do this by cloning the
-    // content of every `Span` into an owned `String`.
+    #[cfg(feature = "custom-markdown")]
+    let markdown = {
+        // Use our custom markdown renderer that fixes the fence marker issue
+        custom_markdown::render_markdown(&markdown_with_workaround, styles)
+    };
+    
+    #[cfg(not(feature = "custom-markdown"))]
+    let markdown = {
+        let tui_markdown_result = tui_markdown::from_str(&markdown_with_workaround);
+        // Post-process to remove fence markers that tui-markdown incorrectly renders as visible text
+        let processed_lines = remove_fence_markers(tui_markdown_result.lines);
+        ratatui::text::Text::from(processed_lines)
+    };
 
-    for borrowed_line in markdown.lines {
-        let mut owned_spans = Vec::with_capacity(borrowed_line.spans.len());
-        for span in &borrowed_line.spans {
-            // Create a new owned String for the span's content to break the lifetime link.
-            let owned_span = Span::styled(span.content.to_string(), span.style);
-            owned_spans.push(owned_span);
+    #[cfg(feature = "custom-markdown")]
+    {
+        // Custom renderer already returns Text<'static>, so we can use it directly
+        lines.extend(markdown.lines);
+    }
+    
+    #[cfg(not(feature = "custom-markdown"))]
+    {
+        // `tui_markdown` returns a `ratatui::text::Text` where every `Line` borrows
+        // from the input `message` string. Since the `HistoryCell` stores its lines
+        // with a `'static` lifetime we must create an **owned** copy of each line
+        // so that it is no longer tied to `message`. We do this by cloning the
+        // content of every `Span` into an owned `String`.
+
+        for borrowed_line in markdown.lines {
+            let mut owned_spans = Vec::with_capacity(borrowed_line.spans.len());
+            for span in &borrowed_line.spans {
+                // Create a new owned String for the span's content to break the lifetime link.
+                let owned_span = Span::styled(span.content.to_string(), span.style);
+                owned_spans.push(owned_span);
+            }
+
+            let owned_line: Line<'static> = Line::from(owned_spans).style(borrowed_line.style);
+            // Preserve alignment if it was set on the source line.
+            let owned_line = match borrowed_line.alignment {
+                Some(alignment) => owned_line.alignment(alignment),
+                None => owned_line,
+            };
+
+            lines.push(owned_line);
         }
-
-        let owned_line: Line<'static> = Line::from(owned_spans).style(borrowed_line.style);
-        // Preserve alignment if it was set on the source line.
-        let owned_line = match borrowed_line.alignment {
-            Some(alignment) => owned_line.alignment(alignment),
-            None => owned_line,
-        };
-
-        lines.push(owned_line);
     }
 }
 
@@ -90,6 +126,28 @@ fn collapse_heading_blank_lines(lines: Vec<Line<'static>>) -> Vec<Line<'static>>
         };
         result.push(line);
     }
+    result
+}
+
+/// Removes fence markers (```) that tui-markdown incorrectly renders as visible text.
+/// This is a workaround for the library not properly handling code blocks.
+#[cfg(not(feature = "custom-markdown"))]
+fn remove_fence_markers(lines: Vec<Line<'_>>) -> Vec<Line<'_>> {
+    let mut result = Vec::new();
+    
+    for line in lines {
+        // Check if this line is just a fence marker
+        let content: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+        let trimmed = content.trim();
+        
+        // Skip lines that are just fence markers (```, ```rust, ```markdown, etc.)
+        if trimmed.starts_with("```") && trimmed.chars().all(|c| c == '`' || c.is_ascii_alphanumeric()) {
+            continue;
+        }
+        
+        result.push(line);
+    }
+    
     result
 }
 
@@ -234,7 +292,9 @@ mod tests {
         // The helper itself always rewrites – this test validates behaviour of
         // append_markdown when `file_opener` is None.
         let mut out = Vec::new();
-        append_markdown_with_opener_and_cwd(markdown, &mut out, UriBasedFileOpener::None, cwd);
+        append_markdown_with_opener_and_cwd(markdown, &mut out, UriBasedFileOpener::None, cwd, 
+            #[cfg(feature = "custom-markdown")]
+            &codex_core::config_types::Styles::default());
         // Convert lines back to string for comparison.
         let rendered: String = out
             .iter()

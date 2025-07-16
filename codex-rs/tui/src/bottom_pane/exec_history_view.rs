@@ -17,6 +17,8 @@ use ratatui::widgets::Cell;
 use ratatui::widgets::Row;
 use ratatui::widgets::Table;
 
+use crate::style::parse_style;
+use codex_core::config_types::Styles;
 use codex_core::exec_history::ExecHistory;
 use codex_core::exec_history::ExecHistoryEntry;
 use codex_core::exec_history::ExecHistoryFilter;
@@ -34,10 +36,11 @@ pub struct ExecHistoryView {
     filter: ExecHistoryFilter,
     error_message: Option<String>,
     should_close: bool,
+    styles: Styles,
 }
 
 impl ExecHistoryView {
-    pub fn new(codex_home: &Path) -> Self {
+    pub fn new(codex_home: &Path, styles: Styles) -> Self {
         let history = ExecHistory::new(codex_home);
         let entries = match history.read_all() {
             Ok(entries) => entries,
@@ -54,6 +57,7 @@ impl ExecHistoryView {
             filter: ExecHistoryFilter::default(),
             error_message: None,
             should_close: false,
+            styles,
         }
     }
 
@@ -72,44 +76,46 @@ impl ExecHistoryView {
         }
     }
 
-    fn format_decision(decision: &Option<ReviewDecision>) -> (&'static str, Style) {
+    fn format_decision(&self, decision: &Option<ReviewDecision>) -> (&'static str, Style) {
         match decision {
-            None => ("N/A", Style::default().fg(Color::DarkGray)),
-            Some(ReviewDecision::Approved) => ("Approved", Style::default().fg(Color::Green)),
-            Some(ReviewDecision::ApprovedForSession) => {
-                ("Session", Style::default().fg(Color::Cyan))
+            None => ("N/A", parse_style(&self.styles.history_na)),
+            Some(ReviewDecision::Approved) => {
+                ("Approved", parse_style(&self.styles.history_approved))
             }
-            Some(ReviewDecision::Denied) => ("Denied", Style::default().fg(Color::Red)),
-            Some(ReviewDecision::Abort) => ("Aborted", Style::default().fg(Color::Magenta)),
+            Some(ReviewDecision::ApprovedForSession) => {
+                ("Session", parse_style(&self.styles.history_session))
+            }
+            Some(ReviewDecision::Denied) => ("Denied", parse_style(&self.styles.history_denied)),
+            Some(ReviewDecision::Abort) => ("Aborted", parse_style(&self.styles.history_aborted)),
         }
     }
 
-    fn format_status(entry: &ExecHistoryEntry) -> (&'static str, Style) {
+    fn format_status(&self, entry: &ExecHistoryEntry) -> (&'static str, Style) {
         if !entry.execution_started {
             if entry.approval_requested && entry.approval_decision.is_none() {
-                ("Pending", Style::default().fg(Color::Yellow))
+                ("Pending", parse_style(&self.styles.history_pending))
             } else if matches!(
                 entry.approval_decision,
                 Some(ReviewDecision::Denied) | Some(ReviewDecision::Abort)
             ) {
-                ("Rejected", Style::default().fg(Color::Red))
+                ("Rejected", parse_style(&self.styles.history_rejected))
             } else {
-                ("Not Run", Style::default().fg(Color::DarkGray))
+                ("Not Run", parse_style(&self.styles.history_not_run))
             }
         } else if let Some(result) = &entry.execution_result {
             if result.error.is_some() {
-                ("Error", Style::default().fg(Color::Red))
+                ("Error", parse_style(&self.styles.history_error))
             } else if let Some(exit_code) = result.exit_code {
                 if exit_code == 0 {
-                    ("Success", Style::default().fg(Color::Green))
+                    ("Success", parse_style(&self.styles.history_success))
                 } else {
-                    ("Failed", Style::default().fg(Color::Red))
+                    ("Failed", parse_style(&self.styles.history_failed))
                 }
             } else {
-                ("Unknown", Style::default().fg(Color::DarkGray))
+                ("Unknown", parse_style(&self.styles.history_unknown))
             }
         } else {
-            ("Running", Style::default().fg(Color::Blue))
+            ("Running", parse_style(&self.styles.history_running))
         }
     }
 }
@@ -220,8 +226,8 @@ impl<'a> BottomPaneView<'a> for ExecHistoryView {
                 };
                 let command = entry.command.join(" ");
                 let (decision_text, decision_style) =
-                    Self::format_decision(&entry.approval_decision);
-                let (status_text, status_style) = Self::format_status(entry);
+                    self.format_decision(&entry.approval_decision);
+                let (status_text, status_style) = self.format_status(entry);
                 let exit_code = entry
                     .execution_result
                     .as_ref()

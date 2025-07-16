@@ -129,12 +129,15 @@ impl ChatWidget<'_> {
         Self {
             app_event_tx: app_event_tx.clone(),
             codex_op_tx,
-            conversation_history: ConversationHistoryWidget::new(config.tui.non_fullscreen_mode),
+            conversation_history: ConversationHistoryWidget::new(
+                config.tui.non_fullscreen_mode,
+                config.tui.styles.clone(),
+            ),
             bottom_pane: BottomPane::new(BottomPaneParams {
                 app_event_tx,
                 has_input_focus: true,
                 composer_max_rows: config.tui.composer_max_rows,
-                colors: config.tui.colors.clone(),
+                styles: config.tui.styles.clone(),
             }),
             input_focus: InputFocus::BottomPane,
             config,

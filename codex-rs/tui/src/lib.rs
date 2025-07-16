@@ -43,6 +43,8 @@ pub mod history_cell;
 mod log_layer;
 mod login_screen;
 mod markdown;
+#[cfg(feature = "custom-markdown")]
+mod custom_markdown;
 mod mouse_capture;
 mod scroll_event_helper;
 mod slash_command;

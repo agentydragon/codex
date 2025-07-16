@@ -1,16 +1,15 @@
-use crate::api_logger::{ApiLogger, TS_FORMAT};
+use crate::ResponseItem;
+use crate::api_logger::ApiLogger;
+use crate::api_logger::TS_FORMAT;
 use serde_json::Value;
 use time::OffsetDateTime;
-use crate::ResponseItem;
 
 /// Validate that after any assistant tool call in chat messages, the next message is a tool response.
-pub async fn validate_chat_message_sequence(
-    messages: &[Value],
-    api_logger: Option<&ApiLogger>,
-) {
+pub async fn validate_chat_message_sequence(messages: &[Value], api_logger: Option<&ApiLogger>) {
     for (idx, msg) in messages.iter().enumerate() {
         if msg.get("tool_calls").is_some() {
-            let valid_next = messages.get(idx + 1)
+            let valid_next = messages
+                .get(idx + 1)
                 .map(|next| next.get("role").and_then(|r| r.as_str()) == Some("tool"))
                 .unwrap_or(false);
             if !valid_next {
@@ -41,10 +40,13 @@ pub async fn validate_response_input_sequence(
     for i in 0..input.len() {
         match &input[i] {
             ResponseItem::FunctionCall { call_id, .. } => {
-                let valid = input.get(i + 1)
-                    .map(|next| matches!(next,
-                        ResponseItem::FunctionCallOutput { call_id: cid, .. } if cid == call_id
-                    ))
+                let valid = input
+                    .get(i + 1)
+                    .map(|next| {
+                        matches!(next,
+                            ResponseItem::FunctionCallOutput { call_id: cid, .. } if cid == call_id
+                        )
+                    })
                     .unwrap_or(false);
                 if !valid {
                     if let Some(logger) = api_logger {
@@ -103,9 +105,7 @@ pub async fn validate_response_input_sequence(
                     });
                     let _ = logger.log(&entry).await;
                 }
-                panic!(
-                    "Invalid request: ends with unanswered tool call in prompt.input"
-                );
+                panic!("Invalid request: ends with unanswered tool call in prompt.input");
             }
             _ => {}
         }

@@ -160,13 +160,13 @@ impl UserApprovalWidget<'_> {
     pub(crate) fn new(
         approval_request: ApprovalRequest,
         app_event_tx: AppEventSender,
-        colors: codex_core::config_types::Colors,
+        styles: codex_core::config_types::Styles,
     ) -> Self {
-        let select_style = parse_style(&colors.approval_select_style);
-        let plain_style = parse_style(&colors.approval_plain_style);
+        let select_style = parse_style(&styles.approval_select_style);
+        let plain_style = parse_style(&styles.approval_plain_style);
         // Styles for popup dialog
-        let fg_style = parse_style(&colors.popup_fg);
-        let bg_style = parse_style(&colors.popup_bg);
+        let fg_style = parse_style(&styles.popup_fg);
+        let bg_style = parse_style(&styles.popup_bg);
         let input = Input::default();
         let confirmation_prompt = match &approval_request {
             ApprovalRequest::Exec {

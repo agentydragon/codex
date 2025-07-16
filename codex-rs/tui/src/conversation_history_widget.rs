@@ -3,7 +3,9 @@ use crate::cell_widget::CellWidget;
 use crate::history_cell::CommandOutput;
 use crate::history_cell::HistoryCell;
 use crate::history_cell::PatchEventType;
+use crate::style::parse_style;
 use codex_core::config::Config;
+use codex_core::config_types::Styles;
 use codex_core::protocol::FileChange;
 use codex_core::protocol::SessionConfiguredEvent;
 use crossterm::event::KeyCode;
@@ -36,11 +38,13 @@ pub struct ConversationHistoryWidget {
     has_input_focus: bool,
     /// When true, do not draw an internal scrollbar (non-fullscreen mode).
     non_fullscreen_mode: bool,
+    /// TUI style configuration
+    styles: Styles,
 }
 
 impl ConversationHistoryWidget {
     /// Create a new conversation history widget; set `non_fullscreen_mode` to true to skip internal scrollbar.
-    pub fn new(non_fullscreen_mode: bool) -> Self {
+    pub fn new(non_fullscreen_mode: bool, styles: Styles) -> Self {
         Self {
             entries: Vec::new(),
             cached_width: StdCell::new(0),
@@ -49,6 +53,7 @@ impl ConversationHistoryWidget {
             last_viewport_height: StdCell::new(0),
             has_input_focus: false,
             non_fullscreen_mode,
+            styles,
         }
     }
 
@@ -208,11 +213,11 @@ impl ConversationHistoryWidget {
     }
 
     pub fn add_background_event(&mut self, message: String) {
-        self.add_to_history(HistoryCell::new_background_event(message));
+        self.add_to_history(HistoryCell::new_background_event(&self.styles, message));
     }
 
     pub fn add_error(&mut self, message: String) {
-        self.add_to_history(HistoryCell::new_error_event(message));
+        self.add_to_history(HistoryCell::new_error_event(&self.styles, message));
     }
 
     /// Add a pending patch entry (before user approval).
@@ -226,7 +231,11 @@ impl ConversationHistoryWidget {
     }
 
     pub fn add_active_exec_command(&mut self, call_id: String, command: Vec<String>) {
-        self.add_to_history(HistoryCell::new_active_exec_command(call_id, command));
+        self.add_to_history(HistoryCell::new_active_exec_command(
+            &self.styles,
+            call_id,
+            command,
+        ));
     }
 
     pub fn add_active_mcp_tool_call(
@@ -237,7 +246,11 @@ impl ConversationHistoryWidget {
         arguments: Option<JsonValue>,
     ) {
         self.add_to_history(HistoryCell::new_active_mcp_tool_call(
-            call_id, server, tool, arguments,
+            &self.styles,
+            call_id,
+            server,
+            tool,
+            arguments,
         ));
     }
 
@@ -270,6 +283,7 @@ impl ConversationHistoryWidget {
             {
                 if &call_id == history_id {
                     *cell = HistoryCell::new_completed_exec_command(
+                        &self.styles,
                         command.clone(),
                         CommandOutput {
                             exit_code,
@@ -306,6 +320,7 @@ impl ConversationHistoryWidget {
             {
                 if &call_id == history_id {
                     let completed = HistoryCell::new_completed_mcp_tool_call(
+                        &self.styles,
                         width,
                         invocation.clone(),
                         *start,
@@ -459,21 +474,21 @@ impl WidgetRef for ConversationHistoryWidget {
 
             // Thumb color highlights focus, else low-contrast.
             let thumb_style = if self.has_input_focus {
-                Style::reset().fg(Color::LightYellow)
+                parse_style(&self.styles.scroll_thumb_active)
             } else {
-                Style::reset().fg(Color::Gray)
+                parse_style(&self.styles.scroll_thumb_inactive)
             };
 
             StatefulWidget::render(
                 Scrollbar::new(ScrollbarOrientation::VerticalRight)
                     .begin_symbol(Some("↑"))
                     .end_symbol(Some("↓"))
-                    .begin_style(Style::reset().fg(Color::DarkGray))
-                    .end_style(Style::reset().fg(Color::DarkGray))
+                    .begin_style(parse_style(&self.styles.scroll_track))
+                    .end_style(parse_style(&self.styles.scroll_track))
                     .thumb_symbol("█")
                     .thumb_style(thumb_style)
                     .track_symbol(Some("│"))
-                    .track_style(Style::reset().fg(Color::DarkGray)),
+                    .track_style(parse_style(&self.styles.scroll_track)),
                 inner,
                 buf,
                 &mut scroll_state,

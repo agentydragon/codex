@@ -1,6 +1,7 @@
 use crate::cell_widget::CellWidget;
 use crate::exec_command::strip_bash_lc_and_escape;
 use crate::markdown::append_markdown;
+use crate::style::parse_style;
 use crate::text_block::TextBlock;
 use crate::text_formatting::format_and_truncate_tool_result;
 use base64::Engine;
@@ -8,6 +9,7 @@ use codex_ansi_escape::ansi_escape_line;
 use codex_common::elapsed::format_duration;
 use codex_core::WireApi;
 use codex_core::config::Config;
+use codex_core::config_types::Styles;
 use codex_core::model_supports_reasoning_summaries;
 use codex_core::protocol::FileChange;
 use codex_core::protocol::SessionConfiguredEvent;
@@ -59,6 +61,40 @@ fn render_header_body(
         lines.append(&mut body);
     }
     lines
+}
+
+/// Render a message with sender label, handling sender_break_line option.
+fn render_message_with_sender(
+    config: &Config,
+    label: RtSpan<'static>,
+    body: Vec<RtLine<'static>>,
+) -> Vec<RtLine<'static>> {
+    if config.tui.sender_break_line {
+        let mut l = Vec::new();
+        // label on its own line
+        l.push(RtLine::from(vec![label.clone()]));
+        // then message body lines
+        l.extend(body.clone());
+        l
+    } else {
+        // combine sender label and first line of body, indenting subsequent lines
+        let mut l = Vec::new();
+        if let Some(first) = body.first() {
+            let mut spans = vec![label.clone(), RtSpan::raw(" ".to_string())];
+            spans.extend(first.spans.clone());
+            l.push(RtLine::from(spans).style(first.style));
+            let indent = " ";
+            for ln in body.iter().skip(1) {
+                // Preserve styling by creating a new line with indent span + original styled spans
+                let mut spans = vec![RtSpan::raw(indent.to_string())];
+                spans.extend(ln.spans.clone());
+                l.push(RtLine::from(spans).style(ln.style));
+            }
+        } else {
+            l.push(RtLine::from(vec![label.clone()]));
+        }
+        l
+    }
 }
 
 pub(crate) struct CommandOutput {
@@ -165,15 +201,24 @@ impl HistoryCell {
             let mut lines: Vec<Line<'static>> = vec![
                 Line::from(vec![
                     "OpenAI ".into(),
-                    "Codex".bold(),
+                    Span::styled("Codex", parse_style(&config.tui.styles.version_text)),
                     format!(" v{VERSION}").into(),
-                    " (research preview)".dim(),
+                    Span::styled(
+                        " (research preview)",
+                        parse_style(&config.tui.styles.research_preview_text),
+                    ),
                 ]),
                 Line::from(""),
                 Line::from(vec![
-                    "codex session".magenta().bold(),
+                    Span::styled(
+                        "codex session",
+                        parse_style(&config.tui.styles.session_info),
+                    ),
                     " ".into(),
-                    session_id.to_string().dim(),
+                    Span::styled(
+                        session_id.to_string(),
+                        parse_style(&config.tui.styles.dim_text),
+                    ),
                 ]),
             ];
 
@@ -197,7 +242,13 @@ impl HistoryCell {
                 ));
             }
             for (key, value) in entries {
-                lines.push(Line::from(vec![format!("{key}: ").bold(), value.into()]));
+                lines.push(Line::from(vec![
+                    Span::styled(
+                        format!("{key}: "),
+                        parse_style(&config.tui.styles.bold_text),
+                    ),
+                    value.into(),
+                ]));
             }
             lines.push(Line::from(""));
             HistoryCell::WelcomeMessage {
@@ -209,7 +260,10 @@ impl HistoryCell {
             }
         } else {
             let lines = vec![
-                Line::from("model changed:".magenta().bold()),
+                Line::from(Span::styled(
+                    "model changed:",
+                    parse_style(&config.tui.styles.session_info),
+                )),
                 Line::from(format!("requested: {}", config.model)),
                 Line::from(format!("used: {model}")),
                 Line::from(""),
@@ -232,34 +286,7 @@ impl HistoryCell {
                 .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
         );
-        // Render sender and content according to sender_break_line; insert message spacing if configured
-        let mut lines = if config.tui.sender_break_line {
-            let mut l = Vec::new();
-            // label on its own line
-            l.push(RtLine::from(vec![label.clone()]));
-            // then message body lines
-            l.extend(body.clone());
-            l
-        } else {
-            // combine sender label and first line of body, indenting subsequent lines
-            let mut l = Vec::new();
-            if let Some(first) = body.first() {
-                let mut spans = vec![label.clone(), RtSpan::raw(" ".to_string())];
-                spans.extend(first.spans.clone());
-                l.push(RtLine::from(spans).style(first.style));
-                let indent = " ".to_string();
-                for ln in body.iter().skip(1) {
-                    let text: String = ln.spans.iter().map(|s| s.content.clone()).collect();
-                    l.push(RtLine::from(indent.clone() + &text));
-                }
-            } else {
-                l.push(RtLine::from(vec![label.clone()]));
-            }
-            l
-        };
-        if config.tui.message_spacing {
-            lines.push(RtLine::from(""));
-        }
+        let lines = render_message_with_sender(config, label, body);
         HistoryCell::UserPrompt {
             view: TextBlock::new(lines),
         }
@@ -275,31 +302,7 @@ impl HistoryCell {
                 .fg(Color::Magenta)
                 .add_modifier(Modifier::BOLD),
         );
-        // Render sender and content according to sender_break_line; insert message spacing if configured
-        let mut lines = if config.tui.sender_break_line {
-            let mut l = Vec::new();
-            l.push(RtLine::from(vec![label.clone()]));
-            l.extend(md_lines.clone());
-            l
-        } else {
-            let mut l = Vec::new();
-            if let Some(first) = md_lines.first() {
-                let mut spans = vec![label.clone(), RtSpan::raw(" ".to_string())];
-                spans.extend(first.spans.clone());
-                l.push(RtLine::from(spans).style(first.style));
-                let indent = " ".to_string();
-                for ln in md_lines.iter().skip(1) {
-                    let text: String = ln.spans.iter().map(|s| s.content.clone()).collect();
-                    l.push(RtLine::from(indent.clone() + &text));
-                }
-            } else {
-                l.push(RtLine::from(vec![label.clone()]));
-            }
-            l
-        };
-        if config.tui.message_spacing {
-            lines.push(RtLine::from(""));
-        }
+        let lines = render_message_with_sender(config, label, md_lines);
         HistoryCell::AgentMessage {
             view: TextBlock::new(lines),
         }
@@ -315,42 +318,25 @@ impl HistoryCell {
                 .fg(Color::Magenta)
                 .add_modifier(Modifier::ITALIC),
         );
-        // Render sender and content according to sender_break_line; insert message spacing if configured
-        let mut lines = if config.tui.sender_break_line {
-            let mut l = Vec::new();
-            l.push(RtLine::from(vec![label.clone()]));
-            l.extend(md_lines.clone());
-            l
-        } else {
-            let mut l = Vec::new();
-            if let Some(first) = md_lines.first() {
-                let mut spans = vec![label.clone(), RtSpan::raw(" ".to_string())];
-                spans.extend(first.spans.clone());
-                l.push(RtLine::from(spans).style(first.style));
-                let indent = " ".to_string();
-                for ln in md_lines.iter().skip(1) {
-                    let text: String = ln.spans.iter().map(|s| s.content.clone()).collect();
-                    l.push(RtLine::from(indent.clone() + &text));
-                }
-            } else {
-                l.push(RtLine::from(vec![label.clone()]));
-            }
-            l
-        };
-        if config.tui.message_spacing {
-            lines.push(RtLine::from(""));
-        }
+        let lines = render_message_with_sender(config, label, md_lines);
         HistoryCell::AgentReasoning {
             view: TextBlock::new(lines),
         }
     }
 
-    pub(crate) fn new_active_exec_command(call_id: String, command: Vec<String>) -> Self {
+    pub(crate) fn new_active_exec_command(
+        styles: &Styles,
+        call_id: String,
+        command: Vec<String>,
+    ) -> Self {
         let command_escaped = strip_bash_lc_and_escape(&command);
         let start = Instant::now();
 
         let lines: Vec<Line<'static>> = vec![
-            Line::from(vec!["command".magenta(), " running...".dim()]),
+            Line::from(vec![
+                Span::styled("command", parse_style(&styles.command_running)),
+                Span::styled(" running...", parse_style(&styles.dim_text)),
+            ]),
             Line::from(format!("$ {command_escaped}")),
             Line::from(""),
         ];
@@ -363,7 +349,11 @@ impl HistoryCell {
         }
     }
 
-    pub(crate) fn new_completed_exec_command(command: String, output: CommandOutput) -> Self {
+    pub(crate) fn new_completed_exec_command(
+        styles: &Styles,
+        command: String,
+        output: CommandOutput,
+    ) -> Self {
         let CommandOutput {
             exit_code,
             stdout,
@@ -424,11 +414,16 @@ impl HistoryCell {
             stderr.lines()
         };
         for raw in lines_iter.by_ref().take(TOOL_CALL_MAX_LINES) {
-            lines.push(ansi_escape_line(raw).dim());
+            let mut line = ansi_escape_line(raw);
+            line = line.style(parse_style(&styles.dim_text));
+            lines.push(line);
         }
         let remaining = lines_iter.count();
         if remaining > 0 {
-            lines.push(Line::from(format!("... {remaining} additional lines")).dim());
+            lines.push(Line::from(Span::styled(
+                format!("... {remaining} additional lines"),
+                parse_style(&styles.dim_text),
+            )));
         }
         lines.push(Line::from(""));
 
@@ -438,6 +433,7 @@ impl HistoryCell {
     }
 
     pub(crate) fn new_active_mcp_tool_call(
+        styles: &Styles,
         call_id: String,
         server: String,
         tool: String,
@@ -455,17 +451,20 @@ impl HistoryCell {
             .unwrap_or_default();
 
         let invocation_spans = vec![
-            Span::styled(server, Style::default().fg(Color::Blue)),
+            Span::styled(server, parse_style(&styles.tool_header)),
             Span::raw("."),
-            Span::styled(tool, Style::default().fg(Color::Blue)),
+            Span::styled(tool, parse_style(&styles.tool_header)),
             Span::raw("("),
-            Span::styled(args_str, Style::default().fg(Color::Gray)),
+            Span::styled(args_str, parse_style(&styles.tool_args)),
             Span::raw(")"),
         ];
         let invocation = Line::from(invocation_spans);
 
         let start = Instant::now();
-        let title_line = Line::from(vec!["tool".magenta(), " running...".dim()]);
+        let title_line = Line::from(vec![
+            Span::styled("tool", parse_style(&styles.tool_running)),
+            Span::styled(" running...", parse_style(&styles.dim_text)),
+        ]);
         let lines: Vec<Line<'static>> = vec![title_line, invocation.clone(), Line::from("")];
 
         HistoryCell::ActiveMcpToolCall {
@@ -523,6 +522,7 @@ impl HistoryCell {
     }
 
     pub(crate) fn new_completed_mcp_tool_call(
+        styles: &Styles,
         num_cols: u16,
         invocation: Line<'static>,
         start: Instant,
@@ -536,14 +536,17 @@ impl HistoryCell {
         let duration = format_duration(start.elapsed());
         let status_str = if success { "success" } else { "failed" };
         let title_line = Line::from(vec![
-            "tool".magenta(),
+            Span::styled("tool", parse_style(&styles.tool_running)),
             " ".into(),
             if success {
-                status_str.green()
+                Span::styled(status_str, parse_style(&styles.green_success))
             } else {
-                status_str.red()
+                Span::styled(status_str, parse_style(&styles.red_error))
             },
-            format!(", duration: {duration}").gray(),
+            Span::styled(
+                format!(", duration: {duration}"),
+                parse_style(&styles.dim_text),
+            ),
         ]);
 
         let mut lines: Vec<Line<'static>> = Vec::new();
@@ -583,7 +586,10 @@ impl HistoryCell {
                                 format!("embedded resource: {uri}")
                             }
                         };
-                        lines.push(Line::styled(line_text, Style::default().fg(Color::Gray)));
+                        lines.push(Line::from(Span::styled(
+                            line_text,
+                            parse_style(&styles.tool_args),
+                        )));
                     }
                 }
 
@@ -605,19 +611,30 @@ impl HistoryCell {
         }
     }
 
-    pub(crate) fn new_background_event(message: String) -> Self {
+    pub(crate) fn new_background_event(styles: &Styles, message: String) -> Self {
         let mut lines: Vec<Line<'static>> = Vec::new();
-        lines.push(Line::from("event".dim()));
-        lines.extend(message.lines().map(|l| Line::from(l.to_string()).dim()));
+        lines.push(Line::from(Span::styled(
+            "event",
+            parse_style(&styles.event_text),
+        )));
+        lines.extend(
+            message
+                .lines()
+                .map(|l| Line::from(Span::styled(l.to_string(), parse_style(&styles.event_text)))),
+        );
         lines.push(Line::from(""));
         HistoryCell::BackgroundEvent {
             view: TextBlock::new(lines),
         }
     }
 
-    pub(crate) fn new_error_event(message: String) -> Self {
+    pub(crate) fn new_error_event(styles: &Styles, message: String) -> Self {
         let lines: Vec<Line<'static>> = vec![
-            vec!["ERROR: ".red().bold(), message.into()].into(),
+            vec![
+                Span::styled("ERROR: ", parse_style(&styles.red_error)),
+                message.into(),
+            ]
+            .into(),
             "".into(),
         ];
         HistoryCell::ErrorEvent {
@@ -638,7 +655,10 @@ impl HistoryCell {
             auto_approved: false,
         } = event_type
         {
-            let lines = vec![RtLine::from("patch applied".magenta().bold())];
+            let lines = vec![RtLine::from(RtSpan::styled(
+                "patch applied",
+                parse_style(&config.tui.styles.session_info),
+            ))];
             return Self::PendingPatch {
                 view: TextBlock::new(lines),
             };

@@ -35,7 +35,7 @@ use crate::flags::OPENAI_REQUEST_MAX_RETRIES;
 use crate::flags::OPENAI_STREAM_IDLE_TIMEOUT_MS;
 use crate::model_provider_info::ModelProviderInfo;
 use crate::model_provider_info::WireApi;
-use crate::models::FunctionCallOutputPayload;
+// use crate::model_provider_info::built_in_model_providers;
 use crate::models::ResponseItem;
 use crate::openai_tools::create_tools_json_for_responses_api;
 use crate::util::backoff;
@@ -74,6 +74,10 @@ impl ModelClient {
     /// the provider config.  Public callers always invoke `stream()` – the
     /// specialised helpers are private to avoid accidental misuse.
     pub async fn stream(&self, prompt: &Prompt) -> Result<ResponseStream> {
+        // enforce that every function call is answered before next input
+        if let Some(call_id) = Self::detect_unanswered_function_call(&prompt.input) {
+            return Err(CodexErr::UnansweredFunctionCall(call_id));
+        }
         match self.provider.wire_api {
             WireApi::Responses => self.stream_responses(prompt).await,
             WireApi::Chat => {
@@ -128,6 +132,7 @@ impl ModelClient {
         call
     }
 
+    /// Build the Responses API request, injecting a cancellation output if a previous function call was never answered.
     /// Implementation for the OpenAI *Responses* experimental API.
     async fn stream_responses(&self, prompt: &Prompt) -> Result<ResponseStream> {
         if let Some(path) = &*CODEX_RS_SSE_FIXTURE {
@@ -139,21 +144,10 @@ impl ModelClient {
         let full_instructions = prompt.get_full_instructions(&self.model);
         let tools_json = create_tools_json_for_responses_api(prompt, &self.model)?;
         let reasoning = create_reasoning_param_for_request(&self.model, self.effort, self.summary);
-        // if model requested a tool call previously without a matching output, inject cancel
-        let mut input_items = prompt.input.clone();
-        if let Some(call_id) = Self::detect_unanswered_function_call(&input_items) {
-            input_items.push(ResponseItem::FunctionCallOutput {
-                call_id: call_id.clone(),
-                output: FunctionCallOutputPayload {
-                    content: "User did not approve this tool call".into(),
-                    success: Some(false),
-                },
-            });
-        }
         let payload = ResponsesApiRequest {
             model: &self.model,
             instructions: &full_instructions,
-            input: &input_items,
+            input: &prompt.input,
             tools: &tools_json,
             tool_choice: "auto",
             parallel_tool_calls: false,
@@ -447,6 +441,8 @@ async fn stream_from_fixture(path: impl AsRef<Path>) -> Result<ResponseStream> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model_provider_info::ModelProviderInfo;
+    use crate::model_provider_info::WireApi;
     use crate::models::FunctionCallOutputPayload;
 
     #[test]
@@ -480,5 +476,28 @@ mod tests {
             ModelClient::detect_unanswered_function_call(&history2),
             None
         );
+    }
+
+    #[tokio::test]
+    async fn test_stream_unanswered_function_call_errors() {
+        let mut prompt = Prompt::default();
+        let call_id = "callX".to_string();
+        prompt.input = vec![ResponseItem::FunctionCall {
+            name: "f".into(),
+            arguments: "{}".into(),
+            call_id: call_id.clone(),
+        }];
+        prompt.prev_id = None;
+        prompt.store = false;
+        let provider = ModelProviderInfo {
+            name: "".into(),
+            base_url: "".into(),
+            env_key: None,
+            env_key_instructions: None,
+            wire_api: WireApi::Responses,
+        };
+        let client = ModelClient::new("m", provider, Default::default(), Default::default(), None);
+        let err = client.stream(&prompt).await.unwrap_err();
+        assert!(matches!(err, CodexErr::UnansweredFunctionCall(id) if id == call_id));
     }
 }

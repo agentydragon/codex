@@ -110,16 +110,12 @@ pub struct Tui {
     #[serde(default)]
     pub header_compact: bool,
 
-    /// When `true`, insert a blank line between messages for visual separation.
-    #[serde(default)]
-    pub message_spacing: bool,
-
     /// When `true`, render the sender label on its own line above the message content.
     #[serde(default)]
     pub sender_break_line: bool,
-    /// Per-element color overrides for the TUI.
+    /// Per-element style overrides for the TUI.
     #[serde(default)]
-    pub colors: Colors,
+    pub styles: Styles,
 
     /// Maximum number of visible lines in the chat input composer before scrolling.
     /// The composer will expand up to this many lines; additional content will enable
@@ -161,9 +157,8 @@ impl Default for Tui {
             non_fullscreen_mode: Default::default(),
             markdown_compact: Default::default(),
             header_compact: Default::default(),
-            message_spacing: Default::default(),
             sender_break_line: Default::default(),
-            colors: Colors::default(),
+            styles: Styles::default(),
             composer_max_rows: default_composer_max_rows(),
             editor: default_editor(),
             require_double_ctrl_d: false,
@@ -176,143 +171,151 @@ impl Default for Tui {
 /// under `[tui.styles]` using kebab-case keys; values are comma-separated modifiers
 /// (`bold`, `italic`, `underline`), `fg=<color>`, and `bg=<color>` (named or hex `#RRGGBB`).
 #[derive(Deserialize, Debug, Clone, PartialEq)]
-#[serde(rename_all = "kebab-case")]
-pub struct Colors {
+#[serde(rename_all = "kebab-case", default)]
+pub struct Styles {
     /// ">40% context left" indicator
-    #[serde(default = "default_context_high")]
     pub context_high: String,
     /// "25%–40% context left" indicator
-    #[serde(default = "default_context_medium")]
     pub context_medium: String,
     /// "≤25% context left" indicator
-    #[serde(default = "default_context_low")]
     pub context_low: String,
     /// Focused scrollbar thumb
-    #[serde(default = "default_scroll_thumb_active")]
     pub scroll_thumb_active: String,
     /// Unfocused scrollbar thumb
-    #[serde(default = "default_scroll_thumb_inactive")]
     pub scroll_thumb_inactive: String,
     /// Scrollbar track
-    #[serde(default = "default_scroll_track")]
     pub scroll_track: String,
     /// Popup (approval/command) foreground
-    #[serde(default = "default_popup_fg")]
     pub popup_fg: String,
     /// Popup (approval/command) background
-    #[serde(default = "default_popup_bg")]
     pub popup_bg: String,
-    /// ✓ success marker
-    #[serde(default = "default_exec_success")]
-    pub exec_success: String,
-    /// ✗ failure marker
-    #[serde(default = "default_exec_failure")]
-    pub exec_failure: String,
-    /// Execution timing text
-    #[serde(default = "default_exec_timing")]
-    pub exec_timing: String,
-    /// Diff add (A)
-    #[serde(default = "default_diff_add")]
-    pub diff_add: String,
-    /// Diff remove (D)
-    #[serde(default = "default_diff_remove")]
-    pub diff_remove: String,
-    /// Diff modify (M)
-    #[serde(default = "default_diff_modify")]
-    pub diff_modify: String,
-    /// Diff other (R/C)
-    #[serde(default = "default_diff_other")]
-    pub diff_other: String,
     /// Approval dialog selection style (comma-separated modifiers and colors, e.g. "bold,fg=Blue,underline")
-    #[serde(default = "default_approval_select_style")]
     pub approval_select_style: String,
     /// Approval dialog default/plain style (comma-separated modifiers and colors, e.g. "fg=Gray")
-    #[serde(default = "default_approval_plain_style")]
     pub approval_plain_style: String,
     /// Approval dialog error style (comma-separated modifiers and colors, e.g. "fg=Red")
-    #[serde(default = "default_approval_error_style")]
     pub approval_error_style: String,
+    /// Composer error border
+    pub composer_error_border: String,
+    /// History border
+    pub history_border: String,
+    /// Git warning border
+    pub git_warning_border: String,
+    /// Status text
+    pub status_text: String,
+    /// Tool header
+    pub tool_header: String,
+    /// Tool arguments
+    pub tool_args: String,
+    /// History approved
+    pub history_approved: String,
+    /// History denied
+    pub history_denied: String,
+    /// History pending
+    pub history_pending: String,
+    /// History session
+    pub history_session: String,
+    /// History aborted
+    pub history_aborted: String,
+    /// History rejected
+    pub history_rejected: String,
+    /// History not run
+    pub history_not_run: String,
+    /// History error
+    pub history_error: String,
+    /// History success
+    pub history_success: String,
+    /// History failed
+    pub history_failed: String,
+    /// History unknown
+    pub history_unknown: String,
+    /// History running
+    pub history_running: String,
+    /// History N/A
+    pub history_na: String,
+    /// Dim text style
+    pub dim_text: String,
+    /// Magenta accent color
+    pub magenta_accent: String,
+    /// Bold text style
+    pub bold_text: String,
+    /// Red error text
+    pub red_error: String,
+    /// Green success text
+    pub green_success: String,
+    /// Session info text
+    pub session_info: String,
+    /// Command running text
+    pub command_running: String,
+    /// Tool running text
+    pub tool_running: String,
+    /// Event text
+    pub event_text: String,
+    /// Version text
+    pub version_text: String,
+    /// Research preview text
+    pub research_preview_text: String,
 }
 
-fn default_context_high() -> String {
-    "fg=Green".to_string()
-}
-fn default_context_medium() -> String {
-    "fg=Yellow".to_string()
-}
-fn default_context_low() -> String {
-    "fg=Red".to_string()
-}
-fn default_scroll_thumb_active() -> String {
-    "fg=LightYellow".to_string()
-}
-fn default_scroll_thumb_inactive() -> String {
-    "fg=Gray".to_string()
-}
-fn default_scroll_track() -> String {
-    "fg=DarkGray".to_string()
-}
-fn default_popup_fg() -> String {
-    "fg=LightBlue".to_string()
-}
-fn default_popup_bg() -> String {
-    "bg=DarkGray".to_string()
-}
-fn default_exec_success() -> String {
-    "fg=Green".to_string()
-}
-fn default_exec_failure() -> String {
-    "fg=Red".to_string()
-}
-fn default_exec_timing() -> String {
-    "fg=Gray".to_string()
-}
-fn default_diff_add() -> String {
-    "fg=Green".to_string()
-}
-fn default_diff_remove() -> String {
-    "fg=Red".to_string()
-}
-fn default_diff_modify() -> String {
-    "fg=Yellow".to_string()
-}
-fn default_diff_other() -> String {
-    "fg=Cyan".to_string()
-}
-
-fn default_approval_error_style() -> String {
-    "fg=Red".to_string()
-}
-
-fn default_approval_select_style() -> String {
-    "bold,fg=Blue".to_string()
-}
-
-fn default_approval_plain_style() -> String {
-    "".to_string()
-}
-
-impl Default for Colors {
+impl Default for Styles {
     fn default() -> Self {
         Self {
-            context_high: default_context_high(),
-            context_medium: default_context_medium(),
-            context_low: default_context_low(),
-            scroll_thumb_active: default_scroll_thumb_active(),
-            scroll_thumb_inactive: default_scroll_thumb_inactive(),
-            scroll_track: default_scroll_track(),
-            popup_fg: default_popup_fg(),
-            popup_bg: default_popup_bg(),
-            exec_success: default_exec_success(),
-            exec_failure: default_exec_failure(),
-            exec_timing: default_exec_timing(),
-            diff_add: default_diff_add(),
-            diff_remove: default_diff_remove(),
-            diff_modify: default_diff_modify(),
-            diff_other: default_diff_other(),
-            approval_select_style: default_approval_select_style(),
-            approval_plain_style: default_approval_plain_style(),
-            approval_error_style: default_approval_error_style(),
+            // Context indicators
+            context_high: "fg=Green".to_string(),
+            context_medium: "fg=Yellow".to_string(),
+            context_low: "fg=Red".to_string(),
+
+            // Scrollbar
+            scroll_thumb_active: "fg=LightYellow".to_string(),
+            scroll_thumb_inactive: "fg=Gray".to_string(),
+            scroll_track: "fg=DarkGray".to_string(),
+
+            // Popups
+            popup_fg: "fg=LightBlue".to_string(),
+            popup_bg: "bg=DarkGray".to_string(),
+
+            // Approval dialog
+            approval_select_style: "bold,fg=Blue".to_string(),
+            approval_plain_style: "".to_string(),
+            approval_error_style: "fg=Red".to_string(),
+
+            // UI borders and elements
+            composer_error_border: "fg=Red".to_string(),
+            history_border: "fg=Cyan".to_string(),
+            git_warning_border: "fg=Red".to_string(),
+            status_text: "fg=White".to_string(),
+
+            // Tool styles
+            tool_header: "fg=Blue".to_string(),
+            tool_args: "fg=Gray".to_string(),
+
+            // History states
+            history_approved: "fg=Green".to_string(),
+            history_denied: "fg=Red".to_string(),
+            history_pending: "fg=Yellow".to_string(),
+            history_session: "fg=Cyan".to_string(),
+            history_aborted: "fg=Magenta".to_string(),
+            history_rejected: "fg=Red".to_string(),
+            history_not_run: "fg=DarkGray".to_string(),
+            history_error: "fg=Red".to_string(),
+            history_success: "fg=Green".to_string(),
+            history_failed: "fg=Red".to_string(),
+            history_unknown: "fg=DarkGray".to_string(),
+            history_running: "fg=Blue".to_string(),
+            history_na: "fg=DarkGray".to_string(),
+
+            // Common text styles
+            dim_text: "dim".to_string(),
+            magenta_accent: "fg=Magenta".to_string(),
+            bold_text: "bold".to_string(),
+            red_error: "fg=Red,bold".to_string(),
+            green_success: "fg=Green".to_string(),
+            session_info: "fg=Magenta,bold".to_string(),
+            command_running: "fg=Magenta".to_string(),
+            tool_running: "fg=Magenta".to_string(),
+            event_text: "dim".to_string(),
+            version_text: "bold".to_string(),
+            research_preview_text: "dim".to_string(),
         }
     }
 }
