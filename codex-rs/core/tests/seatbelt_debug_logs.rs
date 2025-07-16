@@ -20,7 +20,7 @@ fn seatbelt_debug_deny_logs() {
     policy.push_str("(debug deny)\n");
     let profile_path = env::temp_dir().join(format!("sbpl_{}.sbpl", std::process::id()));
     fs::write(&profile_path, policy).unwrap();
-    let status = Command::new("sandbox-exec")
+    let output = Command::new("sandbox-exec")
         .args([
             "-f",
             profile_path.to_str().unwrap(),
@@ -29,10 +29,15 @@ fn seatbelt_debug_deny_logs() {
             "-c",
             "echo hi > denied.txt",
         ])
-        .status()
+        .output()
         .unwrap();
     let _ = fs::remove_file(&profile_path);
+    // Show sandbox-exec output
+    let combined = String::from_utf8_lossy(&output.stdout).to_string()
+        + &String::from_utf8_lossy(&output.stderr);
+    println!("sandbox-exec output:\n{combined}");
     // sandbox-exec aborts on Operation not permitted (exit code 71 or SIGABRT)
+    let status = output.status;
     let exit_code = status.code();
     let signal = status.signal();
     assert!(
