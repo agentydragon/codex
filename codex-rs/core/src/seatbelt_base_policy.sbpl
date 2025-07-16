@@ -5,6 +5,7 @@
 
 ; start with closed-by-default
 (deny default)
+(debug deny)
 
 ; child processes inherit the policy of their parent
 (allow process-exec)

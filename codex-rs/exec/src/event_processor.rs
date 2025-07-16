@@ -174,9 +174,9 @@ impl EventProcessor {
                 ts_println!(self, "{prefix} {message}");
             }
             EventMsg::BackgroundEvent(BackgroundEventEvent { message }) => {
-                // Collapse verbose sandbox-denied and retry logs into exec flow; skip them here.
-                if message.contains("sandbox denied") || message.contains("retrying") {
-                    // drop verbose background messages for exec errors/retries
+                // Collapse verbose retry logs; show sandbox-denied messages.
+                if message.contains("retrying") {
+                    // drop verbose retry logs
                 } else {
                     ts_println!(self, "{}", message.style(self.dimmed));
                 }
@@ -234,8 +234,8 @@ impl EventProcessor {
                     ("".to_string(), format!("exec('{call_id}')"))
                 };
 
-                let output = if exit_code == 0 { stdout } else { stderr };
-                let truncated_output = output
+                let combined = format!("{}{}", stdout, stderr);
+                let truncated_output = combined
                     .lines()
                     .take(MAX_OUTPUT_LINES_FOR_EXEC_TOOL_CALL)
                     .collect::<Vec<_>>()
