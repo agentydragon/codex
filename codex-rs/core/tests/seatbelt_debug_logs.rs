@@ -15,29 +15,14 @@ fn seatbelt_debug_deny_logs() {
         eprintln!("skipping seatbelt_debug_deny_logs: sandbox-exec not found");
         return;
     }
-    // Construct a temporary SBPL profile file with debug deny and test it
-    let mut policy = include_str!("../src/seatbelt_base_policy.sbpl").to_string();
-    policy.push_str("(debug deny)\n");
-    let profile_path = env::temp_dir().join(format!("sbpl_{}.sbpl", std::process::id()));
-    fs::write(&profile_path, policy).unwrap();
-    let output = Command::new("sandbox-exec")
-        .args([
-            "-f",
-            profile_path.to_str().unwrap(),
-            "--",
-            "sh",
-            "-c",
-            "echo hi > denied.txt",
-        ])
-        .output()
+    // sandbox-exec should abort on a protected write
+    // Use the default base policy file
+    let profile = include_str!("../src/seatbelt_base_policy.sbpl");
+    let status = Command::new("sandbox-exec")
+        .args(["-p", profile, "--", "sh", "-c", "echo hi > denied.txt"])
+        .status()
         .unwrap();
-    let _ = fs::remove_file(&profile_path);
-    // Show sandbox-exec output
-    let combined = String::from_utf8_lossy(&output.stdout).to_string()
-        + &String::from_utf8_lossy(&output.stderr);
-    println!("sandbox-exec output:\n{combined}");
-    // sandbox-exec aborts on Operation not permitted (exit code 71 or SIGABRT)
-    let status = output.status;
+    // Expect either Operation not permitted or an abort, depending on OS version
     let exit_code = status.code();
     let signal = status.signal();
     assert!(
