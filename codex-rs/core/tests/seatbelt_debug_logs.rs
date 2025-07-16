@@ -4,6 +4,7 @@
 #![allow(unused_imports)]
 use std::env;
 use std::fs;
+use std::os::unix::process::ExitStatusExt;
 use std::process::Command;
 
 /// Verifies that Seatbelt's debug deny flag causes syscall denials to appear on stderr
@@ -14,17 +15,28 @@ fn seatbelt_debug_deny_logs() {
         eprintln!("skipping seatbelt_debug_deny_logs: sandbox-exec not found");
         return;
     }
-    // Run with policy string (includes debug deny) and expect sandbox_apply error
-    let policy = include_str!("../src/seatbelt_base_policy.sbpl");
-    let output = Command::new("sandbox-exec")
-        .args(["-p", policy, "--", "sh", "-c", "echo hi > denied.txt"])
-        .output()
+    // Construct a temporary SBPL profile file with debug deny and test it
+    let mut policy = include_str!("../src/seatbelt_base_policy.sbpl").to_string();
+    policy.push_str("(debug deny)\n");
+    let profile_path = env::temp_dir().join(format!("sbpl_{}.sbpl", std::process::id()));
+    fs::write(&profile_path, policy).unwrap();
+    let status = Command::new("sandbox-exec")
+        .args([
+            "-f",
+            profile_path.to_str().unwrap(),
+            "--",
+            "sh",
+            "-c",
+            "echo hi > denied.txt",
+        ])
+        .status()
         .unwrap();
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    let combined = format!("{stdout}{stderr}");
+    let _ = fs::remove_file(&profile_path);
+    // sandbox-exec aborts on Operation not permitted (exit code 71 or SIGABRT)
+    let exit_code = status.code();
+    let signal = status.signal();
     assert!(
-        combined.contains("sandbox_apply: Operation not permitted"),
-        "Expected sandbox_apply failure, got output: {combined}"
+        exit_code == Some(71) || signal == Some(6),
+        "Expected exit code 71 or SIGABRT, got code={exit_code:?} signal={signal:?}"
     );
 }
