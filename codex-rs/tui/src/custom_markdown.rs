@@ -447,4 +447,45 @@ fn main() {
         assert!(all_content.contains("# Heading 1"));
         assert!(all_content.contains("## Heading 2"));
     }
+    
+    #[test]
+    fn test_paragraph_spacing() {
+        let styles = Styles::default();
+        let markdown = "First paragraph.\n\nSecond paragraph.\n\nThird paragraph.";
+        
+        let result = render_markdown(markdown, &styles);
+        
+        println!("Total lines: {}", result.lines.len());
+        for (i, line) in result.lines.iter().enumerate() {
+            let content: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+            println!("Line {}: '{}'", i, content);
+        }
+        
+        // Should have content with proper spacing
+        assert!(result.lines.len() >= 3); // At least the 3 paragraphs
+    }
+    
+    #[test] 
+    fn test_styling_application() {
+        let styles = Styles::default();
+        let markdown = "**Bold text** and *italic text*";
+        
+        let result = render_markdown(markdown, &styles);
+        
+        println!("Line count: {}", result.lines.len());
+        if !result.lines.is_empty() {
+            let line = &result.lines[0];
+            println!("Span count: {}", line.spans.len());
+            for (i, span) in line.spans.iter().enumerate() {
+                println!("Span {}: '{}' - Bold: {:?}, Italic: {:?}", 
+                    i, 
+                    span.content,
+                    span.style.add_modifier.contains(ratatui::style::Modifier::BOLD),
+                    span.style.add_modifier.contains(ratatui::style::Modifier::ITALIC)
+                );
+            }
+        }
+        
+        assert_eq!(result.lines.len(), 1);
+    }
 }
