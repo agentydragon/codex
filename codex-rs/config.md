@@ -195,7 +195,7 @@ sandbox_permissions = [
 ]
 ```
 
-## auto_allow
+## `auto_allow` (custom approval predicates)
 
 User-defined predicate scripts that vote on each shell command before manual approval.
 
@@ -213,6 +213,39 @@ script = "my_predicate --flag"
 If any predicate returns `deny`, Codex rejects the command; otherwise if any returns
 `allow`, Codex auto-approves and proceeds under the sandbox; if all return `no-opinion`
 or error, Codex falls back to the manual approval prompt.
+
+### Example: Python approval predicate (`approve_predicate.py`)
+
+```python
+#!/usr/bin/env python3
+"""
+Custom auto-approval predicate for codex-rs.
+
+This script reads the candidate shell command as its sole argument and prints exactly
+one of: "allow", "deny", or "no-opinion" to stdout.
+"""
+
+import sys
+
+def main(cmd: str) -> None:
+    # Deny destructive commands
+    if "rm -rf /" in cmd or "rm -rf --no-preserve-root" in cmd:
+        print("deny")
+        return
+
+    # Auto-allow git operations
+    if cmd.strip().startswith("git "):
+        print("allow")
+        return
+
+    # Otherwise, no opinion → fall back to manual approval
+    print("no-opinion")
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.exit("Usage: approve_predicate.py '<full command line>'")
+    main(sys.argv[1])
+```
 
 ## mcp_servers
 
@@ -317,29 +350,50 @@ Customize individual TUI styles under the `[tui.styles]` section. Keys are in ke
 
 ```toml
 [tui.styles]
+# Context bar (chat composer)
 context-high          = "fg=Green"
 context-medium        = "fg=Yellow"
 context-low           = "fg=Red"
+# Scrollbar styling
 scroll-thumb-active   = "fg=LightYellow"
 scroll-thumb-inactive = "fg=Gray"
 scroll-track          = "fg=DarkGray"
+# Pop-up dialogs (commands / approval)
 popup-fg              = "fg=LightBlue"
 popup-bg              = "bg=DarkGray"
+# Composer error border
 composer-error-border = "fg=Red"
+# Conversation history border/title
 history-border        = "fg=Cyan"
+# Git‑warning modal border
 git-warning-border    = "fg=Red"
+# Status indicator text
 status-text           = "fg=White"
+# Approval dialog
 approval-select-style = "bold,fg=Blue"
 approval-plain-style  = "fg=Gray"
+
+# Patch & diff markers
+patch-header          = "Cyan"
+assistant-label       = "Magenta"
+hunk-marker           = "Magenta"
+
+# Exec‑command annotations
 exec-success          = "fg=Green"
 exec-failure          = "fg=Red"
 exec-timing           = "fg=Gray"
+
+# Diff summary (A, D, M, R/C)
 diff-add              = "fg=Green"
 diff-remove           = "fg=Red"
 diff-modify           = "fg=Yellow"
 diff-other            = "fg=Cyan"
+
+# MCP‑tool call headers
 tool-header           = "fg=Blue"
 tool-args             = "fg=Gray"
+
+# Exec‑history view rows & borders
 history-approved      = "fg=Green"
 history-denied        = "fg=Red"
 history-pending       = "fg=Yellow"
@@ -354,7 +408,11 @@ history-unknown       = "fg=DarkGray"
 history-running       = "fg=Blue"
 history-na            = "fg=DarkGray"
 history-footer-bg     = "bg=DarkGray"
+
+# Dimmed / secondary text
 dim-text              = "fg=Gray"
+
+# Global reset fallback
 reset                 = "fg=Reset"
 ```
 
