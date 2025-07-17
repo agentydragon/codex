@@ -53,11 +53,6 @@ pub(crate) struct ChatComposer<'a> {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::items_after_test_module,
-    clippy::unwrap_used,
-    clippy::uninlined_format_args
-)]
 mod tests {
     use super::*;
     use crate::app_event::AppEvent;
@@ -83,9 +78,10 @@ mod tests {
         // shell_mode should have toggled to true.
         assert!(composer.shell_mode);
         // Verify DispatchCommand(Shell) event was sent.
-        match rx.recv().unwrap() {
-            AppEvent::DispatchCommand(cmd) => assert_eq!(cmd, SlashCommand::Shell),
-            other => panic!("Expected DispatchCommand(Shell), got {:?}", other),
+        match rx.recv() {
+            Ok(AppEvent::DispatchCommand(cmd)) => assert_eq!(cmd, SlashCommand::Shell),
+            Ok(other) => panic!("Expected DispatchCommand(Shell), got {:?}", other),
+            Err(e) => panic!("Did not receive any event: {e}"),
         }
     }
 

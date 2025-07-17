@@ -1558,8 +1558,32 @@ async fn handle_sanbox_error(
     }
 
     // Ask the user to retry without sandbox
-    sess.notify_background_event(&sub_id, format!("Execution failed: {error}"))
-        .await;
+    // Inform user of sandbox execution failure and how to reproduce it manually
+    {
+        // Compute sandbox wrapper invocation to reproduce the failure
+        #[allow(unused_imports)]
+        use crate::exec::create_linux_sandbox_command_args;
+        let wrapper_prog = sess
+            .codex_linux_sandbox_exe
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|| "codex-linux-sandbox".to_string());
+        let args = create_linux_sandbox_command_args(
+            params.command.clone(),
+            &sess.sandbox_policy,
+            &params.cwd,
+        );
+        let hint_cmd = std::iter::once(wrapper_prog)
+            .chain(args.into_iter())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let msg = format!(
+            "Execution failed: {error}\nHint: to reproduce, run the sandbox wrapper yourself:\n{hint_cmd}",
+            error = error,
+            hint_cmd = hint_cmd
+        );
+        sess.notify_background_event(&sub_id, msg).await;
+    }
 
     let rx_approve = sess
         .request_command_approval(

@@ -479,7 +479,7 @@ mod tests {
             ApprovalRequest::Exec {
                 id: "id".into(),
                 command: Vec::new(),
-                cwd: std::env::current_dir().unwrap(),
+                cwd: std::env::current_dir().expect("failed to get current dir"),
                 reason: None,
             },
             app_event_tx.clone(),
@@ -536,7 +536,7 @@ mod tests {
             ApprovalRequest::Exec {
                 id: "id".into(),
                 command: vec!["cmd".into()],
-                cwd: std::env::current_dir().unwrap(),
+                cwd: std::env::current_dir().expect("failed to get current dir"),
                 reason: None,
             },
             app_event_tx,

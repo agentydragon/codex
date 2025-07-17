@@ -20,6 +20,7 @@ use codex_core::protocol::McpToolCallBeginEvent;
 use codex_core::protocol::McpToolCallEndEvent;
 use codex_core::protocol::Op;
 use codex_core::protocol::PatchApplyBeginEvent;
+use codex_core::protocol::PatchApplyEndEvent;
 use codex_core::protocol::TaskCompleteEvent;
 use crossterm::event::KeyEvent;
 use ratatui::buffer::Buffer;
@@ -101,8 +102,11 @@ impl ChatWidget<'_> {
             let (codex, session_event, _ctrl_c) = match init_codex(config_for_agent_loop).await {
                 Ok(vals) => vals,
                 Err(e) => {
-                    // TODO: surface this error to the user.
-                    tracing::error!("failed to initialize codex: {e}");
+                    // Surface the initialization error to the UI so the user
+                    // has immediate feedback rather than silently failing.
+                    let msg = format!("Failed to initialize Codex: {e}");
+                    tracing::error!("{msg}");
+                    app_event_tx_clone.send(AppEvent::LatestLog(msg));
                     return;
                 }
             };
@@ -414,6 +418,20 @@ impl ChatWidget<'_> {
             }) => {
                 self.conversation_history
                     .record_completed_exec_command(call_id, stdout, stderr, exit_code);
+                self.request_redraw();
+            }
+            EventMsg::PatchApplyEnd(PatchApplyEndEvent {
+                call_id: _,
+                stdout,
+                stderr,
+                success,
+            }) => {
+                self.conversation_history.add_patch_apply_end_event(
+                    &self.config,
+                    stdout.clone(),
+                    stderr.clone(),
+                    success,
+                );
                 self.request_redraw();
             }
             EventMsg::McpToolCallBegin(McpToolCallBeginEvent {

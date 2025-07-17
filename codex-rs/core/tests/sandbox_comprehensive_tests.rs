@@ -1,4 +1,5 @@
 #![cfg(target_os = "macos")]
+#![allow(clippy::collapsible_if)]
 use codex_core::error::CodexErr;
 use codex_core::error::SandboxErr;
 use codex_core::exec::ExecParams;

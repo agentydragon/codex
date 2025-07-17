@@ -212,16 +212,7 @@ impl<'a> BottomPaneView<'a> for ExecHistoryView {
 
                 // Convert SystemTime to local time string (just use relative time for simplicity)
                 let time = match entry.timestamp.elapsed() {
-                    Ok(duration) => {
-                        let secs = duration.as_secs();
-                        if secs < 60 {
-                            format!("{secs}s ago")
-                        } else if secs < 3600 {
-                            format!("{}m ago", secs / 60)
-                        } else {
-                            format!("{}h ago", secs / 3600)
-                        }
-                    }
+                    Ok(elapsed) => crate::time_utils::format_elapsed_short(elapsed),
                     Err(_) => "future?".to_string(),
                 };
                 let command = entry.command.join(" ");

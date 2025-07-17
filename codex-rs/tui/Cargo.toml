@@ -15,7 +15,7 @@ path = "src/lib.rs"
 workspace = true
 
 [features]
-default = ["highlight-code"]
+default = ["custom-markdown"]
 custom-markdown = ["highlight-code"]
 highlight-code = ["dep:syntect", "dep:ansi-to-tui"]
 

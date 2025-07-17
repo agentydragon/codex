@@ -234,7 +234,7 @@ impl EventProcessor {
                     ("".to_string(), format!("exec('{call_id}')"))
                 };
 
-                let combined = format!("{}{}", stdout, stderr);
+                let combined = format!("{stdout}{stderr}");
                 let truncated_output = combined
                     .lines()
                     .take(MAX_OUTPUT_LINES_FOR_EXEC_TOOL_CALL)

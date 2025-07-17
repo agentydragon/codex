@@ -139,6 +139,15 @@ pub async fn process_exec_tool_call(
     sandbox_policy: &SandboxPolicy,
     codex_linux_sandbox_exe: &Option<PathBuf>,
 ) -> Result<ExecToolCallOutput> {
+    // Fast-path: empty or whitespace-only command – return immediate success.
+    if params.command.iter().all(|s| s.trim().is_empty()) {
+        return Ok(ExecToolCallOutput {
+            exit_code: 0,
+            stdout: String::new(),
+            stderr: String::new(),
+            duration: Duration::from_secs(0),
+        });
+    }
     let start = Instant::now();
 
     let raw_output_result = match sandbox_type {
@@ -296,7 +305,7 @@ where
 }
 
 /// Converts the sandbox policy into the CLI invocation for `codex-linux-sandbox`.
-fn create_linux_sandbox_command_args(
+pub(crate) fn create_linux_sandbox_command_args(
     command: Vec<String>,
     sandbox_policy: &SandboxPolicy,
     cwd: &Path,

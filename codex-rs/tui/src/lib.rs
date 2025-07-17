@@ -37,14 +37,15 @@ mod cli;
 mod confirm_ctrl_d;
 pub mod context;
 mod conversation_history_widget;
+#[cfg(feature = "custom-markdown")]
+mod custom_markdown;
 mod exec_command;
+mod exec_utils;
 mod git_warning_screen;
 pub mod history_cell;
 mod log_layer;
 mod login_screen;
 mod markdown;
-#[cfg(feature = "custom-markdown")]
-mod custom_markdown;
 mod mouse_capture;
 mod scroll_event_helper;
 mod slash_command;
@@ -52,6 +53,7 @@ mod status_indicator_widget;
 mod style;
 pub mod text_block;
 mod text_formatting;
+mod time_utils;
 mod tui;
 mod user_approval_widget;
 
@@ -312,15 +314,34 @@ fn should_show_login_screen(config: &Config) -> bool {
             match try_read_openai_api_key(&codex_home).await {
                 Ok(openai_api_key) => {
                     set_openai_api_key(openai_api_key);
-                    tx.send(false).unwrap();
+                    let _ = tx.send(false);
                 }
                 Err(_) => {
-                    tx.send(true).unwrap();
+                    let _ = tx.send(true);
                 }
             }
         });
-        // TODO(mbolin): Impose some sort of timeout.
-        tokio::task::block_in_place(|| rx.blocking_recv()).unwrap()
+        // Wait up to 5 seconds for the async task to determine whether we need
+        // to show the login screen. If it takes longer (e.g. due to network
+        // issues) we optimistically assume the login screen is not needed so
+        // the user is not stuck on a blank screen.
+        const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
+        let mut rx = rx; // make mutable for try_recv
+        tokio::task::block_in_place(move || {
+            use std::time::Duration;
+            use std::time::Instant;
+            let start = Instant::now();
+            loop {
+                if let Ok(val) = rx.try_recv() {
+                    break val;
+                }
+                if start.elapsed() >= TIMEOUT {
+                    break false;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        })
     } else {
         false
     }

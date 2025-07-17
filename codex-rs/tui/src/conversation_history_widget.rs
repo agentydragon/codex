@@ -230,6 +230,22 @@ impl ConversationHistoryWidget {
         self.add_to_history(HistoryCell::new_patch_event(config, event_type, changes));
     }
 
+    /// Handle completion of a patch apply request: display stdout/stderr and status.
+    pub fn add_patch_apply_end_event(
+        &mut self,
+        config: &Config,
+        stdout: String,
+        stderr: String,
+        success: bool,
+    ) {
+        self.add_to_history(HistoryCell::new_patch_apply_end_event(
+            &config.tui.styles,
+            stdout,
+            stderr,
+            success,
+        ));
+    }
+
     pub fn add_active_exec_command(&mut self, call_id: String, command: Vec<String>) {
         self.add_to_history(HistoryCell::new_active_exec_command(
             &self.styles,

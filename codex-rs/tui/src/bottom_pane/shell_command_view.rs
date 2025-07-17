@@ -113,18 +113,18 @@ mod tests {
             KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE),
         );
         view.handle_key_event(&mut pane, KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-        // Skip initial redraw event(s)
-        let mut event;
-        loop {
-            event = rx.recv().unwrap();
-            if matches!(event, AppEvent::ShellCommand(_)) {
-                break;
+        // Wait for the ShellCommand event
+        let event = loop {
+            match rx.recv() {
+                Ok(ev @ AppEvent::ShellCommand(_)) => break ev,
+                Ok(_) => continue,
+                Err(e) => panic!("Did not receive ShellCommand event: {e}"),
             }
-        }
+        };
         if let AppEvent::ShellCommand(cmd) = event {
             assert_eq!(cmd, "a");
         } else {
-            panic!("expected ShellCommand event, got {event:?}");
+            unreachable!();
         }
     }
 }

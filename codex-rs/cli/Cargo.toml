@@ -23,7 +23,7 @@ codex-exec = { path = "../exec" }
 codex-login = { path = "../login" }
 codex-linux-sandbox = { path = "../linux-sandbox" }
 codex-mcp-server = { path = "../mcp-server" }
-codex-tui = { path = "../tui" }
+codex-tui = { path = "../tui", features = ["custom-markdown"] }
 serde_json = "1"
 toml = "0.8"
 serde = "1"

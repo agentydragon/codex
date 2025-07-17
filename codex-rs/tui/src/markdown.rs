@@ -1,7 +1,6 @@
 use codex_core::config::Config;
 use codex_core::config_types::UriBasedFileOpener;
 use ratatui::text::Line;
-use ratatui::text::Span;
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -24,12 +23,9 @@ pub(crate) fn append_markdown(
         #[cfg(feature = "custom-markdown")]
         &config.tui.styles,
     );
-    if config.tui.markdown_compact {
-        for line in collapse_heading_blank_lines(new_lines) {
-            lines.push(line);
-        }
-    } else {
-        lines.extend(new_lines);
+    // Collapse blank lines immediately following headings to reduce excessive spacing
+    for line in collapse_heading_blank_lines(new_lines) {
+        lines.push(line);
     }
 }
 
@@ -38,8 +34,7 @@ fn append_markdown_with_opener_and_cwd(
     lines: &mut Vec<Line<'static>>,
     file_opener: UriBasedFileOpener,
     cwd: &Path,
-    #[cfg(feature = "custom-markdown")]
-    styles: &codex_core::config_types::Styles,
+    #[cfg(feature = "custom-markdown")] styles: &codex_core::config_types::Styles,
 ) {
     // Perform citation rewrite *before* feeding the string to the markdown
     // renderer. When `file_opener` is absent we bypass the transformation to
@@ -59,7 +54,7 @@ fn append_markdown_with_opener_and_cwd(
         // Use our custom markdown renderer that fixes the fence marker issue
         custom_markdown::render_markdown(&markdown_with_workaround, styles)
     };
-    
+
     #[cfg(not(feature = "custom-markdown"))]
     let markdown = {
         let tui_markdown_result = tui_markdown::from_str(&markdown_with_workaround);
@@ -73,7 +68,7 @@ fn append_markdown_with_opener_and_cwd(
         // Custom renderer already returns Text<'static>, so we can use it directly
         lines.extend(markdown.lines);
     }
-    
+
     #[cfg(not(feature = "custom-markdown"))]
     {
         // `tui_markdown` returns a `ratatui::text::Text` where every `Line` borrows
@@ -134,20 +129,24 @@ fn collapse_heading_blank_lines(lines: Vec<Line<'static>>) -> Vec<Line<'static>>
 #[cfg(not(feature = "custom-markdown"))]
 fn remove_fence_markers(lines: Vec<Line<'_>>) -> Vec<Line<'_>> {
     let mut result = Vec::new();
-    
+
     for line in lines {
         // Check if this line is just a fence marker
         let content: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
         let trimmed = content.trim();
-        
+
         // Skip lines that are just fence markers (```, ```rust, ```markdown, etc.)
-        if trimmed.starts_with("```") && trimmed.chars().all(|c| c == '`' || c.is_ascii_alphanumeric()) {
+        if trimmed.starts_with("```")
+            && trimmed
+                .chars()
+                .all(|c| c == '`' || c.is_ascii_alphanumeric())
+        {
             continue;
         }
-        
+
         result.push(line);
     }
-    
+
     result
 }
 
@@ -201,6 +200,7 @@ fn rewrite_file_citations<'a>(
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+    use ratatui::text::Span;
 
     #[test]
     fn collapse_blank_after_heading() {
@@ -292,9 +292,14 @@ mod tests {
         // The helper itself always rewrites – this test validates behaviour of
         // append_markdown when `file_opener` is None.
         let mut out = Vec::new();
-        append_markdown_with_opener_and_cwd(markdown, &mut out, UriBasedFileOpener::None, cwd, 
+        append_markdown_with_opener_and_cwd(
+            markdown,
+            &mut out,
+            UriBasedFileOpener::None,
+            cwd,
             #[cfg(feature = "custom-markdown")]
-            &codex_core::config_types::Styles::default());
+            &codex_core::config_types::Styles::default(),
+        );
         // Convert lines back to string for comparison.
         let rendered: String = out
             .iter()

@@ -1,4 +1,5 @@
 #![cfg(target_os = "macos")]
+#![allow(clippy::uninlined_format_args, clippy::unwrap_used)]
 //! API-level unit tests for sandbox violation detection
 //!
 //! Tests the public codex API to ensure it correctly exposes sandbox violation

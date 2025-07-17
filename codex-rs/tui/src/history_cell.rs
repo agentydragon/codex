@@ -208,7 +208,6 @@ impl HistoryCell {
                         parse_style(&config.tui.styles.research_preview_text),
                     ),
                 ]),
-                Line::from(""),
                 Line::from(vec![
                     Span::styled(
                         "codex session",
@@ -250,7 +249,6 @@ impl HistoryCell {
                     value.into(),
                 ]));
             }
-            lines.push(Line::from(""));
             HistoryCell::WelcomeMessage {
                 view: TextBlock::new(lines),
             }
@@ -266,7 +264,6 @@ impl HistoryCell {
                 )),
                 Line::from(format!("requested: {}", config.model)),
                 Line::from(format!("used: {model}")),
-                Line::from(""),
             ];
             HistoryCell::SessionInfo {
                 view: TextBlock::new(lines),
@@ -338,7 +335,6 @@ impl HistoryCell {
                 Span::styled(" running...", parse_style(&styles.dim_text)),
             ]),
             Line::from(format!("$ {command_escaped}")),
-            Line::from(""),
         ];
 
         HistoryCell::ActiveExecCommand {
@@ -363,32 +359,9 @@ impl HistoryCell {
 
         let mut lines: Vec<Line<'static>> = Vec::new();
 
-        // TODO(codex): factor out time fmt method
         // Render each line of the completed command: green ✓ / red ✗ + timing, padded, then multi-line command.
-        let timing = if duration < Duration::from_secs(5) {
-            format!("{}ms", duration.as_millis())
-        } else {
-            let secs = duration.as_secs();
-            format!("{}:{:02}", secs / 60, secs % 60)
-        };
-        // TODO(codex): render instead as:
-        // 123ms   ✓ /bin/command/...
-        // 123ms 5 ✗ /bin/command/...
-        //
-        // TODO(codex): show running state for command as:
-        // 123ms   O /bin/command/...
-        //         ^-- spinning spinner
-        let ann = if exit_code == 0 {
-            format!("✓ {timing}")
-        } else {
-            format!("✗ {exit_code} {timing}")
-        };
-        let pad = format!("{ann:<9}");
-        let ann_color = if exit_code == 0 {
-            Color::Green
-        } else {
-            Color::Red
-        };
+        // Build annotation (✓/✗, exit code, timing) with dynamic padding.
+        let (pad, ann_color) = crate::exec_utils::render_exec_annotation(exit_code, duration);
         let ann_span = Span::styled(pad.clone(), Style::default().fg(ann_color));
         for (i, cmd_line) in command.split('\n').enumerate() {
             if i == 0 {
@@ -398,12 +371,6 @@ impl HistoryCell {
                     cmd_line.to_string().into(),
                 ]));
             } else {
-                // TODO(codex): 2 is magic constant
-                // TODO(codex): make behavior configurable -
-                //   (a)  .... $ /bin/long/commnad/...
-                //        continues/on/column/1
-                //   (b)  .... $ /bin/long/commnad/...
-                //               padded/to/align
                 let indent = " ".repeat(pad.len() + 2);
                 lines.push(Line::from(indent + cmd_line));
             }
@@ -425,7 +392,6 @@ impl HistoryCell {
                 parse_style(&styles.dim_text),
             )));
         }
-        lines.push(Line::from(""));
 
         HistoryCell::CompletedExecCommand {
             view: TextBlock::new(lines),
@@ -465,7 +431,7 @@ impl HistoryCell {
             Span::styled("tool", parse_style(&styles.tool_running)),
             Span::styled(" running...", parse_style(&styles.dim_text)),
         ]);
-        let lines: Vec<Line<'static>> = vec![title_line, invocation.clone(), Line::from("")];
+        let lines: Vec<Line<'static>> = vec![title_line, invocation.clone()];
 
         HistoryCell::ActiveMcpToolCall {
             call_id,
@@ -556,8 +522,6 @@ impl HistoryCell {
         match result {
             Ok(mcp_types::CallToolResult { content, .. }) => {
                 if !content.is_empty() {
-                    lines.push(Line::from(""));
-
                     for tool_call_result in content {
                         let line_text = match tool_call_result {
                             mcp_types::CallToolResultContent::TextContent(text) => {
@@ -592,8 +556,6 @@ impl HistoryCell {
                         )));
                     }
                 }
-
-                lines.push(Line::from(""));
             }
             Err(e) => {
                 lines.push(Line::from(vec![
@@ -622,7 +584,6 @@ impl HistoryCell {
                 .lines()
                 .map(|l| Line::from(Span::styled(l.to_string(), parse_style(&styles.event_text)))),
         );
-        lines.push(Line::from(""));
         HistoryCell::BackgroundEvent {
             view: TextBlock::new(lines),
         }
@@ -638,6 +599,41 @@ impl HistoryCell {
             "".into(),
         ];
         HistoryCell::ErrorEvent {
+            view: TextBlock::new(lines),
+        }
+    }
+
+    /// Display results of a completed patch application, including stdout/stderr.
+    pub(crate) fn new_patch_apply_end_event(
+        styles: &Styles,
+        stdout: String,
+        stderr: String,
+        success: bool,
+    ) -> Self {
+        let mut lines: Vec<Line<'static>> = Vec::new();
+        let title = if success {
+            "patch applied"
+        } else {
+            "patch failed"
+        };
+        lines.push(Line::from(Span::styled(
+            title,
+            parse_style(&styles.session_info),
+        )));
+        if !stdout.is_empty() {
+            for l in stdout.lines() {
+                lines.push(Line::from(Span::raw(l.to_string())));
+            }
+        }
+        if !stderr.is_empty() {
+            for l in stderr.lines() {
+                lines.push(Line::from(Span::styled(
+                    l.to_string(),
+                    parse_style(&styles.red_error),
+                )));
+            }
+        }
+        HistoryCell::BackgroundEvent {
             view: TextBlock::new(lines),
         }
     }
@@ -674,10 +670,16 @@ impl HistoryCell {
         let body: Vec<RtLine<'static>> = summary
             .into_iter()
             .map(|line| {
-                if line.starts_with('+') {
-                    RtLine::from(line).green()
-                } else if line.starts_with('-') {
-                    RtLine::from(line).red()
+                if let Some(rest) = line.strip_prefix('+') {
+                    RtLine::from(vec![
+                        RtSpan::styled("+", Style::default().fg(Color::Green)),
+                        RtSpan::raw(rest.to_string()),
+                    ])
+                } else if let Some(rest) = line.strip_prefix('-') {
+                    RtLine::from(vec![
+                        RtSpan::styled("-", Style::default().fg(Color::Red)),
+                        RtSpan::raw(rest.to_string()),
+                    ])
                 } else if let Some(idx) = line.find(' ') {
                     let kind = line[..idx].to_string();
                     let rest = line[idx + 1..].to_string();
@@ -701,8 +703,7 @@ impl HistoryCell {
                 .fg(Color::Magenta)
                 .add_modifier(Modifier::BOLD),
         );
-        let mut lines = render_header_body(config, label, body);
-        lines.push(RtLine::from(""));
+        let lines = render_header_body(config, label, body);
         HistoryCell::PendingPatch {
             view: TextBlock::new(lines),
         }
@@ -933,4 +934,397 @@ fn ensure_image_cache(
     *render_cache.borrow_mut() = Some(new_cache);
 
     height_rows
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cell_widget::CellWidget;
+    use crate::history_cell::PatchEventType;
+    use codex_core::config::Config;
+    use codex_core::config::ConfigOverrides;
+    use codex_core::config::ConfigToml;
+    use codex_core::protocol::FileChange;
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+    use ratatui::layout::Rect;
+    use ratatui::style::Color;
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_agent_message_markdown_integration() {
+        let tmp = TempDir::new().unwrap();
+        let config = Config::load_from_base_config_with_overrides(
+            ConfigToml::default(),
+            ConfigOverrides::default(),
+            tmp.path().to_path_buf(),
+        )
+        .unwrap();
+        let markdown_message = r#"Here's my response:
+
+## Step 1
+First, I'll analyze the code.
+
+## Step 2  
+Then I'll make changes:
+
+```rust
+fn example() {
+    println!("Hello, world!");
+}
+```
+
+**Final result**: All done!"#;
+
+        let cell = HistoryCell::new_agent_message(&config, markdown_message.to_string());
+
+        // Extract the rendered lines
+        let lines = match cell {
+            HistoryCell::AgentMessage { view } => view.lines.clone(),
+            _ => panic!("Expected AgentMessage"),
+        };
+
+        println!("\n=== TUI + MARKDOWN INTEGRATION TEST ===");
+        println!("Total lines: {}", lines.len());
+        for (i, line) in lines.iter().enumerate() {
+            let content: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+            if content.trim().is_empty() {
+                println!("Line {}: [EMPTY]", i);
+            } else {
+                println!("Line {}: '{}'", i, content.trim_start());
+            }
+        }
+
+        // Count empty lines
+        let empty_count = lines
+            .iter()
+            .filter(|line| {
+                let content: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+                content.trim().is_empty()
+            })
+            .count();
+        println!("Empty lines count: {}", empty_count);
+
+        // Verify the message was processed
+        assert!(lines.len() > 5, "Should have multiple lines");
+
+        // Verify the sender label is included
+        let first_line_content: String =
+            lines[0].spans.iter().map(|s| s.content.as_ref()).collect();
+        assert!(
+            first_line_content.contains("codex"),
+            "First line should contain sender label"
+        );
+
+        // Verify markdown was processed correctly - no fence markers should be visible
+        for line in &lines {
+            let content: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+            assert!(
+                !content.trim().starts_with("```"),
+                "No fence markers should be visible: '{}'",
+                content
+            );
+        }
+
+        // Verify reasonable spacing (should be much less than before our fixes)
+        assert!(empty_count <= 6, "Too many empty lines: {}", empty_count);
+
+        // Check for expected content
+        let all_content: String = lines
+            .iter()
+            .map(|line| {
+                line.spans
+                    .iter()
+                    .map(|s| s.content.as_ref())
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        assert!(all_content.contains("## Step 1"), "Should contain heading");
+        assert!(
+            all_content.contains("fn example()"),
+            "Should contain code content"
+        );
+        assert!(
+            all_content.contains("Final result"),
+            "Should contain final text"
+        );
+
+        // Verify bold text is properly styled
+        let bold_spans: Vec<_> = lines
+            .iter()
+            .flat_map(|line| &line.spans)
+            .filter(|span| {
+                span.style
+                    .add_modifier
+                    .contains(ratatui::style::Modifier::BOLD)
+            })
+            .collect();
+
+        assert!(!bold_spans.is_empty(), "Should have bold text spans");
+
+        println!("✅ Integration test passed!");
+    }
+
+    #[test]
+    #[cfg(feature = "custom-markdown")]
+    fn test_custom_markdown_feature_integration() {
+        let tmp = TempDir::new().unwrap();
+        let config = Config::load_from_base_config_with_overrides(
+            ConfigToml::default(),
+            ConfigOverrides::default(),
+            tmp.path().to_path_buf(),
+        )
+        .unwrap();
+        let markdown_with_fence_markers = r#"Check this code:
+
+```python
+def hello():
+    print("Hello")
+```
+
+Done!"#;
+
+        let cell = HistoryCell::new_agent_message(&config, markdown_with_fence_markers.to_string());
+
+        let lines = match cell {
+            HistoryCell::AgentMessage { view } => view.lines.clone(),
+            _ => panic!("Expected AgentMessage"),
+        };
+
+        // With custom markdown renderer, fence markers should be completely hidden
+        for line in &lines {
+            let content: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+            assert!(
+                !content.contains("```"),
+                "Custom markdown renderer should hide fence markers: '{}'",
+                content
+            );
+        }
+
+        // Should still contain the actual code
+        let all_content: String = lines
+            .iter()
+            .map(|line| {
+                line.spans
+                    .iter()
+                    .map(|s| s.content.as_ref())
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        assert!(
+            all_content.contains("def hello()"),
+            "Should contain code content"
+        );
+        assert!(
+            all_content.contains("print(\"Hello\")"),
+            "Should contain code content"
+        );
+
+        println!("✅ Custom markdown feature integration test passed!");
+    }
+
+    #[test]
+    fn test_actual_display_spacing() {
+        use crate::cell_widget::CellWidget;
+        use ratatui::Terminal;
+        use ratatui::backend::TestBackend;
+        use ratatui::buffer::Buffer;
+        use ratatui::layout::Rect;
+
+        let tmp = TempDir::new().unwrap();
+        let config = Config::load_from_base_config_with_overrides(
+            ConfigToml::default(),
+            ConfigOverrides::default(),
+            tmp.path().to_path_buf(),
+        )
+        .unwrap();
+
+        // The EXACT markdown from AI logs that shows double spacing in TUI
+        let ai_markdown = "# Heading 1\n## Heading 2\n\n**Bold** *Italic* `inline code`\n\n- Unordered list item\n- Another item";
+
+        let cell = HistoryCell::new_agent_message(&config, ai_markdown.to_string());
+
+        // First, check what lines we have in the TextBlock
+        let lines = match &cell {
+            HistoryCell::AgentMessage { view } => &view.lines,
+            _ => panic!("Expected AgentMessage"),
+        };
+
+        println!("\n=== TEXTBLOCK LINES BEFORE RENDERING ===");
+        for (i, line) in lines.iter().enumerate() {
+            let content: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+            if content.trim().is_empty() {
+                println!("TextBlock Line {}: [EMPTY]", i);
+            } else {
+                println!("TextBlock Line {}: '{}'", i, content.trim_start());
+            }
+        }
+
+        // Test the actual rendering that the TUI uses
+        let width = 80;
+        let height = cell.height(width as u16);
+
+        let backend = TestBackend::new(width, 20);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        terminal
+            .draw(|_f| {
+                let area = Rect::new(0, 0, width as u16, height as u16);
+                let mut buf = Buffer::empty(area);
+                cell.render_window(0, area, &mut buf);
+
+                println!("\n=== ACTUAL DISPLAY RENDERING TEST ===");
+                println!("Cell height: {}", height);
+                println!("Rendered buffer contents:");
+
+                for y in 0..height {
+                    let mut line_content = String::new();
+                    for x in 0..width as u16 {
+                        let cell = &buf[(x, y as u16)];
+                        line_content.push_str(&cell.symbol());
+                    }
+                    let trimmed = line_content.trim_end();
+                    if trimmed.is_empty() {
+                        println!("Line {}: [EMPTY]", y);
+                    } else {
+                        println!("Line {}: '{}'", y, trimmed);
+                    }
+                }
+            })
+            .unwrap();
+
+        println!("This test shows what's ACTUALLY rendered to terminal");
+    }
+
+    #[test]
+    fn test_patch_color_rendering_integration() {
+        // prepare a fake patch with added and removed lines
+        let mut changes = HashMap::new();
+        let diff = "+added line\n-removed line\n".to_string();
+        changes.insert(
+            PathBuf::from("foo.rs"),
+            FileChange::Update {
+                unified_diff: diff,
+                move_path: None,
+            },
+        );
+        let tmp = TempDir::new().unwrap();
+        let config = Config::load_from_base_config_with_overrides(
+            ConfigToml::default(),
+            ConfigOverrides::default(),
+            tmp.path().to_path_buf(),
+        )
+        .unwrap();
+        let cell = HistoryCell::new_patch_event(&config, PatchEventType::ApprovalRequest, changes);
+        let width = 40;
+        let height = cell.height(width);
+        let backend = TestBackend::new(width as u16, height as u16);
+        let mut term = Terminal::new(backend).unwrap();
+        term.draw(|f| {
+            let area = Rect::new(0, 0, width as u16, height as u16);
+            cell.render_window(0, area, f.buffer_mut());
+        })
+        .unwrap();
+        let buf = term.backend().buffer();
+        let mut saw_plus = false;
+        let mut saw_minus = false;
+        for y in 0..height as u16 {
+            for x in 0..width as u16 {
+                if let Some(c) = buf.cell((x, y)) {
+                    if c.symbol() == "+" && c.fg == Color::Green {
+                        saw_plus = true;
+                    }
+                    if c.symbol() == "-" && c.fg == Color::Red {
+                        saw_minus = true;
+                    }
+                }
+            }
+        }
+        assert!(
+            saw_plus && saw_minus,
+            "expected colored + and - in patch render"
+        );
+    }
+
+    #[test]
+    fn test_default_build_spacing() {
+        let tmp = TempDir::new().unwrap();
+        let config = Config::load_from_base_config_with_overrides(
+            ConfigToml::default(),
+            ConfigOverrides::default(),
+            tmp.path().to_path_buf(),
+        )
+        .unwrap();
+
+        // Test the exact pattern from the user's screenshot
+        let markdown_message = r#"## Code Blocks
+
+```javascript
+function greet(name) {
+  console.log(`Hello, ${name}!`);
+}
+```
+
+greet('World');
+
+```python
+def add(a, b):
+    return a + b
+```
+
+print(add(2, 3))
+
+## Table"#;
+
+        let cell = HistoryCell::new_agent_message(&config, markdown_message.to_string());
+
+        let lines = match cell {
+            HistoryCell::AgentMessage { view } => view.lines.clone(),
+            _ => panic!("Expected AgentMessage"),
+        };
+
+        println!("\n=== DEFAULT BUILD SPACING TEST ===");
+        println!("Total lines: {}", lines.len());
+        for (i, line) in lines.iter().enumerate() {
+            let content: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+            if content.trim().is_empty() {
+                println!("Line {}: [EMPTY]", i);
+            } else {
+                println!("Line {}: '{}'", i, content.trim_start());
+            }
+        }
+
+        // Count empty lines
+        let empty_count = lines
+            .iter()
+            .filter(|line| {
+                let content: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+                content.trim().is_empty()
+            })
+            .count();
+        println!("Empty lines count: {}", empty_count);
+
+        // With our fix, should have much fewer empty lines than before
+        assert!(
+            empty_count <= 8,
+            "Too many empty lines: {} (should be ≤8 with our spacing fixes)",
+            empty_count
+        );
+
+        // Verify no fence markers are visible
+        for line in &lines {
+            let content: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+            assert!(
+                !content.contains("```"),
+                "No fence markers should be visible: '{}'",
+                content
+            );
+        }
+    }
 }
